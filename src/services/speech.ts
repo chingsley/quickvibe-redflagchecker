@@ -12,6 +12,31 @@ const UNAVAILABLE_MESSAGE =
 
 let ExpoSpeechRecognitionModule: any = null;
 let speechAvailable: boolean | null = null;
+let activeTranscript = '';
+let resultSubscription: { remove: () => void } | null = null;
+
+function clearResultListener(): void {
+  resultSubscription?.remove();
+  resultSubscription = null;
+}
+
+function attachResultListener(module: any): void {
+  clearResultListener();
+  activeTranscript = '';
+
+  if (typeof module.addListener !== 'function') {
+    return;
+  }
+
+  resultSubscription = module.addListener('result', (event: {
+    results?: { transcript?: string }[];
+  }) => {
+    const transcript = event.results?.[0]?.transcript?.trim();
+    if (transcript) {
+      activeTranscript = transcript;
+    }
+  });
+}
 
 function probeAvailability(): boolean {
   if (speechAvailable !== null) {
@@ -20,9 +45,6 @@ function probeAvailability(): boolean {
 
   if (Platform.OS === 'web') {
     speechAvailable = false;
-    console.warn(
-      '[QuickVibe] Speech recognition is unavailable on web. Mic disabled — use "Type instead".',
-    );
     return false;
   }
 
@@ -35,13 +57,8 @@ function probeAvailability(): boolean {
     }
 
     speechAvailable = false;
-    console.warn(
-      '[QuickVibe] Speech recognition native module not found. Mic disabled — use "Type instead".',
-    );
     return false;
-  } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
-    console.warn('[QuickVibe] Speech recognition unavailable:', message);
+  } catch {
     speechAvailable = false;
     return false;
   }
@@ -59,12 +76,9 @@ export function isSpeechAvailable(): boolean {
   return probeAvailability();
 }
 
-/** Inline permission statuses to avoid importing expo-modules-core enums in tests. */
 const GRANTED = 'granted';
 
-/**
- * Request mic + speech recognition permission and start listening.
- */
+/** Request mic + speech recognition permission and start listening. */
 export async function startListening(): Promise<void> {
   const module = getModule();
   const { status } = await module.getSpeechRecognizerPermissionsAsync();
@@ -80,6 +94,8 @@ export async function startListening(): Promise<void> {
     }
   }
 
+  attachResultListener(module);
+
   module.start({
     lang: 'en-US',
     interimResults: true,
@@ -88,11 +104,21 @@ export async function startListening(): Promise<void> {
 }
 
 /**
- * Stop the active recognition session.
- * Results come through the useSpeechRecognitionEvent hook / event listeners.
+ * Stop the active recognition session and return the transcribed text.
  */
-export async function stopListening(): Promise<null> {
+export async function stopListening(): Promise<string> {
   const module = getModule();
   await module.stop();
-  return null;
+  clearResultListener();
+
+  const transcript = activeTranscript.trim();
+  activeTranscript = '';
+
+  if (!transcript) {
+    throw new Error(
+      'No speech was detected. Try again or type your experience instead.',
+    );
+  }
+
+  return transcript;
 }

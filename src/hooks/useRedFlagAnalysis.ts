@@ -7,46 +7,49 @@ import {
   isSpeechAvailable,
 } from '@/services/speech';
 import { animation } from '@/constants/theme';
-import type { AnalysisState, AnalysisResult } from '@/types';
+import type { AnalysisState, AnalysisResult, FollowUpQuestion } from '@/types';
 
 export { isSpeechAvailable };
 
+interface Clarification {
+  question: string;
+  answer: string;
+}
+
 interface UseRedFlagAnalysisReturn {
-  /** Current phase of the analysis lifecycle. */
   status: AnalysisState;
-  /** Final red-flag score 0–100 (populated when complete). */
   score: number;
-  /** Full analysis result (populated when complete). */
   result: AnalysisResult | null;
-  /** Error message if something went wrong (null when no error). */
   error: string | null;
-  /** Animated progress shared value (0–100) for the CircularLoader. */
   progress: ReturnType<typeof useSharedValue<number>>;
-  /** Start a new analysis flow (toggle recording / stop + process). */
+  pendingQuestions: FollowUpQuestion[];
+  followUpIndex: number;
   startFlow: () => Promise<void>;
-  /** Submit a follow-up answer and continue analysis. */
   submitAnswer: (answer: string) => Promise<void>;
-  /** Submit a text experience directly (for when speech is unavailable). */
   submitText: (text: string) => Promise<void>;
-  /** Reset back to idle state. */
   reset: () => void;
-  /** Clear the current error. */
   clearError: () => void;
 }
 
+function hasFollowUpQuestions(result: AnalysisResult): boolean {
+  return Boolean(result.followUpQuestions && result.followUpQuestions.length > 0);
+}
+
 /**
- * Central state machine that orchestrates the full red-flag check flow:
- *   idle → recording → transcribing → morphing → analyzing → followUp → complete
+ * Central state machine:
+ *   idle → recording → transcribing → morphing → analyzing → followUp → analyzing → complete
  */
 export function useRedFlagAnalysis(): UseRedFlagAnalysisReturn {
   const [status, setStatus] = useState<AnalysisState>('idle');
   const [score, setScore] = useState(0);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [pendingQuestions, setPendingQuestions] = useState<FollowUpQuestion[]>([]);
+  const [followUpIndex, setFollowUpIndex] = useState(0);
   const progress = useSharedValue(0);
 
-  // Keep track of context for follow-up questions
-  const contextRef = useRef<string[]>([]);
+  const experienceRef = useRef('');
+  const clarificationsRef = useRef<Clarification[]>([]);
   const isRecordingRef = useRef(false);
 
   const animateProgress = useCallback(
@@ -58,51 +61,85 @@ export function useRedFlagAnalysis(): UseRedFlagAnalysisReturn {
     [progress],
   );
 
+  const beginFollowUp = useCallback((analysisResult: AnalysisResult) => {
+    setPendingQuestions(analysisResult.followUpQuestions ?? []);
+    setFollowUpIndex(0);
+    setScore(0);
+    setResult(analysisResult);
+    setStatus('followUp');
+  }, []);
+
+  const completeAnalysis = useCallback(
+    (analysisResult: AnalysisResult) => {
+      setScore(analysisResult.score);
+      setResult(analysisResult);
+      animateProgress(analysisResult.score);
+      setStatus('complete');
+      setPendingQuestions([]);
+      setFollowUpIndex(0);
+    },
+    [animateProgress],
+  );
+
+  const handleAnalysisResult = useCallback(
+    (analysisResult: AnalysisResult, options?: { allowFollowUp?: boolean }) => {
+      if (options?.allowFollowUp !== false && hasFollowUpQuestions(analysisResult)) {
+        beginFollowUp(analysisResult);
+        return;
+      }
+      completeAnalysis(analysisResult);
+    },
+    [beginFollowUp, completeAnalysis],
+  );
+
+  const runFinalAnalysis = useCallback(async () => {
+    setStatus('analyzing');
+    setScore(0);
+    progress.value = 0;
+
+    const provider = getProvider();
+    const context = clarificationsRef.current.map(
+      (item) => `Q: ${item.question}\nA: ${item.answer}`,
+    );
+
+    const analysisResult = await provider.analyzeExperience(
+      experienceRef.current,
+      context,
+      { isFinal: true },
+    );
+
+    handleAnalysisResult(analysisResult, { allowFollowUp: false });
+  }, [handleAnalysisResult, progress]);
+
+  const runInitialAnalysis = useCallback(
+    async (text: string) => {
+      experienceRef.current = text;
+      clarificationsRef.current = [];
+      setStatus('analyzing');
+      setScore(0);
+      progress.value = 0;
+
+      const provider = getProvider();
+      const analysisResult = await provider.analyzeExperience(text);
+      handleAnalysisResult(analysisResult);
+    },
+    [handleAnalysisResult, progress],
+  );
+
   const startFlow = useCallback(async () => {
     if (status === 'idle') {
-      // Begin recording
       await startListening();
       isRecordingRef.current = true;
       setStatus('recording');
     } else if (status === 'recording') {
-      // Stop recording and process
       isRecordingRef.current = false;
       setStatus('transcribing');
 
       try {
-        await stopListening();
-
-        // Simulate transcribed text (in production, results come via events)
-        const transcribedText = 'User experience transcribed from speech.';
-
+        const transcribedText = await stopListening();
         setStatus('morphing');
-
-        // Let morph animation play
         await new Promise((r) => setTimeout(r, animation.morphDuration));
-
-        setStatus('analyzing');
-
-        const provider = getProvider();
-        const analysisResult = await provider.analyzeExperience(
-          transcribedText,
-          contextRef.current.length > 0 ? contextRef.current : undefined,
-        );
-
-        // Check for follow-up questions
-        if (
-          analysisResult.followUpQuestions &&
-          analysisResult.followUpQuestions.length > 0
-        ) {
-          setStatus('followUp');
-          setScore(analysisResult.score);
-          setResult(analysisResult);
-          animateProgress(analysisResult.score);
-        } else {
-          setScore(analysisResult.score);
-          setResult(analysisResult);
-          animateProgress(analysisResult.score);
-          setStatus('complete');
-        }
+        await runInitialAnalysis(transcribedText);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Something went wrong.';
         console.error('[QuickVibe] startFlow error:', message, err);
@@ -110,36 +147,28 @@ export function useRedFlagAnalysis(): UseRedFlagAnalysisReturn {
         setStatus('idle');
       }
     }
-  }, [status, animateProgress]);
+  }, [status, runInitialAnalysis]);
 
   const submitAnswer = useCallback(
     async (answer: string) => {
       if (status !== 'followUp') return;
 
-      contextRef.current.push(answer);
-      setStatus('analyzing');
+      const currentQuestion = pendingQuestions[followUpIndex];
+      if (!currentQuestion) return;
+
+      clarificationsRef.current.push({
+        question: currentQuestion.question,
+        answer,
+      });
+
+      const nextIndex = followUpIndex + 1;
+      if (nextIndex < pendingQuestions.length) {
+        setFollowUpIndex(nextIndex);
+        return;
+      }
 
       try {
-        const provider = getProvider();
-        const analysisResult = await provider.analyzeExperience(
-          'Additional context provided.',
-          contextRef.current,
-        );
-
-        if (
-          analysisResult.followUpQuestions &&
-          analysisResult.followUpQuestions.length > 0
-        ) {
-          setStatus('followUp');
-          setScore(analysisResult.score);
-          setResult(analysisResult);
-          animateProgress(analysisResult.score);
-        } else {
-          setScore(analysisResult.score);
-          setResult(analysisResult);
-          animateProgress(analysisResult.score);
-          setStatus('complete');
-        }
+        await runFinalAnalysis();
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Analysis failed.';
         console.error('[QuickVibe] submitAnswer error:', message, err);
@@ -147,47 +176,16 @@ export function useRedFlagAnalysis(): UseRedFlagAnalysisReturn {
         setStatus('idle');
       }
     },
-    [status, animateProgress],
+    [status, pendingQuestions, followUpIndex, runFinalAnalysis],
   );
 
-  const clearError = useCallback(() => setError(null), []);
-
-  /** Shared analysis logic — send text to AI and handle follow-ups. */
-  const runAnalysis = useCallback(
-    async (text: string) => {
-      setStatus('analyzing');
-      const provider = getProvider();
-      const analysisResult = await provider.analyzeExperience(
-        text,
-        contextRef.current.length > 0 ? contextRef.current : undefined,
-      );
-
-      if (
-        analysisResult.followUpQuestions &&
-        analysisResult.followUpQuestions.length > 0
-      ) {
-        setStatus('followUp');
-        setScore(analysisResult.score);
-        setResult(analysisResult);
-        animateProgress(analysisResult.score);
-      } else {
-        setScore(analysisResult.score);
-        setResult(analysisResult);
-        animateProgress(analysisResult.score);
-        setStatus('complete');
-      }
-    },
-    [animateProgress],
-  );
-
-  /** Submit text directly when speech is unavailable. */
   const submitText = useCallback(
     async (text: string) => {
       if (status !== 'idle') return;
       try {
         setStatus('morphing');
         await new Promise((r) => setTimeout(r, animation.morphDuration));
-        await runAnalysis(text);
+        await runInitialAnalysis(text);
       } catch (err) {
         const message = err instanceof Error ? err.message : 'Something went wrong.';
         console.error('[QuickVibe] submitText error:', message, err);
@@ -195,16 +193,21 @@ export function useRedFlagAnalysis(): UseRedFlagAnalysisReturn {
         setStatus('idle');
       }
     },
-    [status, runAnalysis],
+    [status, runInitialAnalysis],
   );
+
+  const clearError = useCallback(() => setError(null), []);
 
   const reset = useCallback(() => {
     setStatus('idle');
     setScore(0);
     setResult(null);
     setError(null);
+    setPendingQuestions([]);
+    setFollowUpIndex(0);
     progress.value = withTiming(0, { duration: 300 });
-    contextRef.current = [];
+    experienceRef.current = '';
+    clarificationsRef.current = [];
     isRecordingRef.current = false;
   }, [progress]);
 
@@ -214,6 +217,8 @@ export function useRedFlagAnalysis(): UseRedFlagAnalysisReturn {
     result,
     error,
     progress,
+    pendingQuestions,
+    followUpIndex,
     startFlow,
     submitAnswer,
     submitText,

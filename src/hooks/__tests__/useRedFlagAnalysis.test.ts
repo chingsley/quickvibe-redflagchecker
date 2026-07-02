@@ -18,7 +18,7 @@ jest.mock('@/services/ai', () => ({
 // Mock speech service
 jest.mock('@/services/speech', () => ({
   startListening: jest.fn().mockResolvedValue(undefined),
-  stopListening: jest.fn().mockResolvedValue(null),
+  stopListening: jest.fn().mockResolvedValue('He was rude during our date.'),
 }));
 
 describe('useRedFlagAnalysis', () => {

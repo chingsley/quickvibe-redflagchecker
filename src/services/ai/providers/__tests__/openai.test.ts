@@ -140,14 +140,24 @@ describe('OpenAIProvider', () => {
     expect(result.reasons).toHaveLength(2);
   });
 
-  it('handles follow-up questions in the response', async () => {
+  it('handles structured follow-up questions in the response', async () => {
     const resultWithQuestions: AnalysisResult = {
-      score: 50,
+      score: 0,
       category: 'ambiguous',
       label: 'Proceed with caution',
       advice: 'Need more info.',
       reasons: ['Unclear communication'],
-      followUpQuestions: ['What happened next?', 'How did you feel?'],
+      followUpQuestions: [
+        {
+          question: 'How often does he express anger while driving?',
+          type: 'choice',
+          choices: ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'],
+        },
+        {
+          question: 'How does he react when you bring it up?',
+          type: 'open',
+        },
+      ],
     };
 
     mockFetch.mockResolvedValueOnce(
@@ -158,7 +168,38 @@ describe('OpenAIProvider', () => {
     const result = await provider.analyzeExperience('Ambiguous situation');
 
     expect(result.followUpQuestions).toHaveLength(2);
-    expect(result.followUpQuestions![0]).toBe('What happened next?');
+    expect(result.followUpQuestions![0]).toEqual({
+      question: 'How often does he express anger while driving?',
+      type: 'choice',
+      choices: ['Never', 'Rarely', 'Sometimes', 'Often', 'Always'],
+    });
+    expect(result.followUpQuestions![1]).toEqual({
+      question: 'How does he react when you bring it up?',
+      type: 'open',
+    });
+  });
+
+  it('normalizes legacy string follow-up questions to open type', async () => {
+    const legacyResult = {
+      score: 0,
+      category: 'ambiguous',
+      label: 'Proceed with caution',
+      advice: 'Need more info.',
+      reasons: ['Unclear communication'],
+      followUpQuestions: ['What happened next?'],
+    };
+
+    mockFetch.mockResolvedValueOnce(
+      mockOpenAIResponse(JSON.stringify(legacyResult)),
+    );
+
+    const provider = new OpenAIProvider('sk-test');
+    const result = await provider.analyzeExperience('Ambiguous situation');
+
+    expect(result.followUpQuestions![0]).toEqual({
+      question: 'What happened next?',
+      type: 'open',
+    });
   });
 
   // ── Error handling ───────────────────────────────────

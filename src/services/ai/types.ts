@@ -1,5 +1,10 @@
 import type { AnalysisResult } from '@/types';
 
+export interface AnalyzeOptions {
+  /** When true, produce a final score using clarifications — no follow-up questions. */
+  isFinal?: boolean;
+}
+
 /**
  * Contract that every AI provider must implement.
  *
@@ -24,5 +29,6 @@ export interface AIProvider {
   analyzeExperience(
     text: string,
     previousContext?: string[],
+    options?: AnalyzeOptions,
   ): Promise<AnalysisResult>;
 }

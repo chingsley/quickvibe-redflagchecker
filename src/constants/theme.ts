@@ -20,7 +20,7 @@ export const colors = {
   white: '#ffffff',
   black: '#111827',
   navy: '#1a2744',
-  demoBadgeBg: '#f3f4f6',
+  heroRing: '#c8daf0',
   gray50: '#f9fafb',
   gray100: '#f3f4f6',
   gray300: '#d1d5db',

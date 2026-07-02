@@ -10,21 +10,15 @@ import {
 } from '@/constants/theme';
 
 interface CircularLoaderProps {
-  /** Current progress 0–100. Clamped automatically. */
   progress: number;
-  /** Show a pulsing loading state instead of fixed progress. */
   loading?: boolean;
-  /** Show the numeric score percentage in the center. Defaults to true. */
   showScore?: boolean;
-  /** Show the verdict label below the ring. */
   showLabel?: boolean;
-  /** Override the auto-derived label. Falls back to getScoreLabel(progress). */
   label?: string;
-  /** Accessibility label for screen readers. */
   accessibilityLabel?: string;
+  /** Override ring diameter — defaults to loaderConfig.size. */
+  size?: number;
 }
-
-const { size, strokeWidth, radius, circumference } = loaderConfig;
 
 /**
  * Animated circular progress ring that sweeps from green (0) through
@@ -38,8 +32,12 @@ export function CircularLoader({
   showLabel = false,
   label,
   accessibilityLabel,
+  size: ringSize = loaderConfig.size,
 }: CircularLoaderProps) {
-  // When loading, show indeterminate 50% ring with pulsing appearance
+  const strokeWidth = loaderConfig.strokeWidth;
+  const radius = (ringSize - strokeWidth) / 2;
+  const circumference = 2 * Math.PI * radius;
+
   const progress = loading
     ? 50
     : Math.max(0, Math.min(100, Math.round(rawProgress)));
@@ -48,31 +46,27 @@ export function CircularLoader({
   const displayLabel =
     label ?? (showLabel ? getScoreLabel(progress) : undefined);
 
-  // Dash offset: full circumference when progress is 0, 0 when progress is 100.
   const dashOffset = circumference * (1 - progress / 100);
 
   return (
     <View
-      style={styles.container}
+      style={[styles.container, { width: ringSize, height: ringSize }]}
       accessibilityLabel={accessibilityLabel}
       accessibilityRole="progressbar"
       accessibilityValue={{ now: progress, min: 0, max: 100 }}
     >
-      {/* SVG Ring */}
-      <Svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
-        {/* Background track */}
+      <Svg width={ringSize} height={ringSize} viewBox={`0 0 ${ringSize} ${ringSize}`}>
         <Circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={ringSize / 2}
+          cy={ringSize / 2}
           r={radius}
           stroke={colors.gray100}
           strokeWidth={strokeWidth}
           fill="none"
         />
-        {/* Foreground arc */}
         <Circle
-          cx={size / 2}
-          cy={size / 2}
+          cx={ringSize / 2}
+          cy={ringSize / 2}
           r={radius}
           stroke={ringColor}
           strokeWidth={strokeWidth}
@@ -81,11 +75,10 @@ export function CircularLoader({
           strokeDasharray={circumference}
           strokeDashoffset={dashOffset}
           rotation={-90}
-          origin={`${size / 2}, ${size / 2}`}
+          origin={`${ringSize / 2}, ${ringSize / 2}`}
         />
       </Svg>
 
-      {/* Center content */}
       <View style={styles.center}>
         {showScore && (
           <Text style={[styles.score, { color: ringColor }]}>
@@ -93,7 +86,9 @@ export function CircularLoader({
           </Text>
         )}
         {displayLabel && (
-          <Text style={styles.label}>{displayLabel}</Text>
+          <Text style={[styles.label, { maxWidth: ringSize * 0.75 }]}>
+            {displayLabel}
+          </Text>
         )}
       </View>
     </View>
@@ -102,8 +97,6 @@ export function CircularLoader({
 
 const styles = StyleSheet.create({
   container: {
-    width: size,
-    height: size,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -122,6 +115,6 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     marginTop: 8,
     textAlign: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
   },
 });

@@ -3,11 +3,21 @@ const mockStop = jest.fn();
 const mockGetPerms = jest.fn();
 const mockRequestPerms = jest.fn();
 
+let resultListener: ((event: {
+  results?: { transcript?: string }[];
+}) => void) | null = null;
+
 const mockNativeModule = {
   start: mockStart,
   stop: mockStop,
   getSpeechRecognizerPermissionsAsync: mockGetPerms,
   requestSpeechRecognizerPermissionsAsync: mockRequestPerms,
+  addListener: jest.fn((eventName: string, listener: typeof resultListener) => {
+    if (eventName === 'result') {
+      resultListener = listener;
+    }
+    return { remove: jest.fn(() => { resultListener = null; }) };
+  }),
 };
 
 const mockRequireOptionalNativeModule = jest.fn(() => mockNativeModule);
@@ -22,6 +32,7 @@ import { startListening, stopListening, isSpeechAvailable } from '../speech';
 describe('speech service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    resultListener = null;
     mockRequireOptionalNativeModule.mockReturnValue(mockNativeModule);
   });
 
@@ -30,16 +41,11 @@ describe('speech service', () => {
   });
 
   it('reports speech as unavailable when native module is missing', () => {
-    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
-
     jest.isolateModules(() => {
       mockRequireOptionalNativeModule.mockReturnValue(null);
       const { isSpeechAvailable: probe } = require('../speech');
       expect(probe()).toBe(false);
-      expect(warnSpy).toHaveBeenCalled();
     });
-
-    warnSpy.mockRestore();
   });
 
   it('requests permission if not granted', async () => {
@@ -63,14 +69,28 @@ describe('speech service', () => {
     await expect(startListening()).rejects.toThrow(/permission/i);
   });
 
-  it('stopListening calls stop on native module', async () => {
+  it('returns transcribed text from speech results', async () => {
+    mockGetPerms.mockResolvedValueOnce({ status: 'granted' });
     mockStop.mockResolvedValueOnce(undefined);
-    const result = await stopListening();
+    await startListening();
+    resultListener?.({
+      results: [{ transcript: 'He yelled at other drivers on the way to our date.' }],
+    });
+    const transcript = await stopListening();
     expect(mockStop).toHaveBeenCalled();
-    expect(result).toBeNull();
+    expect(transcript).toBe('He yelled at other drivers on the way to our date.');
+  });
+
+  it('throws when no speech was detected', async () => {
+    mockGetPerms.mockResolvedValueOnce({ status: 'granted' });
+    mockStop.mockResolvedValueOnce(undefined);
+    await startListening();
+    await expect(stopListening()).rejects.toThrow(/no speech was detected/i);
   });
 
   it('stopListening propagates errors', async () => {
+    mockGetPerms.mockResolvedValueOnce({ status: 'granted' });
+    await startListening();
     mockStop.mockRejectedValueOnce(new Error('fail'));
     await expect(stopListening()).rejects.toThrow('fail');
   });

@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { MorphIcon } from './MorphIcon';
+import { HeroMicIcon } from './HeroMicIcon';
 import { AudioSpectrum } from './AudioSpectrum';
 import { colors } from '@/constants/theme';
 import type { RecordingState } from '@/types';
@@ -16,10 +17,36 @@ interface MicButtonProps {
   size?: number;
   /** Accessibility label for screen readers. */
   accessibilityLabel?: string;
-  /** Visual style — hero matches the FlagCheck home screen design. */
+  /** Visual style — hero matches the VibeCheck home screen design. */
   variant?: 'default' | 'hero';
   /** When true, the button is visible but not tappable. */
   disabled?: boolean;
+}
+
+const HERO_RING_SCALE = [1, 0.78, 0.56];
+
+function HeroMicRings({ size }: { size: number }) {
+  return (
+    <>
+      {HERO_RING_SCALE.map((scale, index) => {
+        const ringSize = size * scale;
+        return (
+          <View
+            key={scale}
+            style={[
+              styles.heroRing,
+              {
+                width: ringSize,
+                height: ringSize,
+                borderRadius: ringSize / 2,
+                opacity: 1 - index * 0.12,
+              },
+            ]}
+          />
+        );
+      })}
+    </>
+  );
 }
 
 /**
@@ -40,26 +67,25 @@ export function MicButton({
   const isHero = variant === 'hero';
   const isProcessing = recordingState === 'processing';
   const isDisabled = disabled || isProcessing;
-  const buttonSize = isHero ? size * 0.58 : size * 0.55;
-  const iconSize = isHero ? size * 0.28 : size * 0.5;
+  const buttonSize = isHero ? size * 0.42 : size * 0.55;
+  const iconSize = isHero ? size * 0.2 : size * 0.5;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
-      {isHero && (
-        <View
-          style={[
-            styles.heroRing,
-            {
-              width: size,
-              height: size,
-              borderRadius: size / 2,
-            },
-          ]}
-        />
-      )}
-
-      {/* Spectrum rings (behind the mic) */}
-      {!isHero && (
+      {isHero ? (
+        <>
+          <HeroMicRings size={size} />
+          {isActive && (
+            <AudioSpectrum
+              isActive
+              audioLevel={audioLevel}
+              ringCount={3}
+              size={size}
+              ringColor={colors.heroRing}
+            />
+          )}
+        </>
+      ) : (
         <AudioSpectrum
           isActive={isActive}
           audioLevel={audioLevel}
@@ -67,10 +93,9 @@ export function MicButton({
         />
       )}
 
-      {/* Mic icon (tappable) */}
       <TouchableOpacity
         onPress={onPress}
-        activeOpacity={0.7}
+        activeOpacity={0.85}
         accessibilityLabel={accessibilityLabel ?? 'Record experience'}
         accessibilityRole="button"
         accessibilityState={{
@@ -84,16 +109,19 @@ export function MicButton({
           isDisabled && styles.disabled,
         ]}
       >
-        <MorphIcon
-          state="mic"
-          size={iconSize}
-          fillColor={isHero ? colors.white : colors.black}
-          accessibilityLabel={undefined}
-        />
+        {isHero ? (
+          <HeroMicIcon size={iconSize} />
+        ) : (
+          <MorphIcon
+            state="mic"
+            size={iconSize}
+            fillColor={colors.black}
+            accessibilityLabel={undefined}
+          />
+        )}
       </TouchableOpacity>
 
-      {/* Status indicator dot */}
-      {isActive && <View style={styles.activeDot} />}
+      {isActive && !isHero && <View style={styles.activeDot} />}
     </View>
   );
 }
@@ -105,9 +133,9 @@ const styles = StyleSheet.create({
   },
   heroRing: {
     position: 'absolute',
-    borderWidth: 1,
-    borderColor: '#e8ecf0',
-    backgroundColor: '#fafbfc',
+    borderWidth: 1.5,
+    borderColor: colors.heroRing,
+    backgroundColor: 'transparent',
   },
   button: {
     alignItems: 'center',
@@ -122,9 +150,11 @@ const styles = StyleSheet.create({
   },
   heroButton: {
     backgroundColor: colors.navy,
-    shadowOpacity: 0.18,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowColor: colors.navy,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 20,
+    elevation: 10,
   },
   disabled: {
     opacity: 0.45,

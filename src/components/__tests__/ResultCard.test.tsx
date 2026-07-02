@@ -1,7 +1,5 @@
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react-native';
-
-// ResultCard will be created in T20.
 import { ResultCard } from '../ResultCard';
 
 const mockResult = {
@@ -16,43 +14,36 @@ const mockResult = {
   ],
 };
 
-// ─── Test Suite ─────────────────────────────────────────
-
 describe('ResultCard', () => {
-  // ── Render ──────────────────────────────────────────
-
   it('renders without crashing', () => {
     const { unmount } = render(
-      <ResultCard {...mockResult} onTryAgain={jest.fn()} />,
+      <ResultCard
+        {...mockResult}
+        onTryAgain={jest.fn()}
+        onViewSuggestions={jest.fn()}
+      />,
     );
     expect(() => unmount()).not.toThrow();
   });
 
-  // ── Content display ──────────────────────────────────
-
   it('displays the score label', () => {
     const { getByText } = render(
-      <ResultCard {...mockResult} onTryAgain={jest.fn()} />,
+      <ResultCard
+        {...mockResult}
+        onTryAgain={jest.fn()}
+        onViewSuggestions={jest.fn()}
+      />,
     );
     expect(getByText('Proceed at your own detriment')).toBeTruthy();
   });
 
-  it('displays the advice text', () => {
-    const { getByText } = render(
-      <ResultCard {...mockResult} onTryAgain={jest.fn()} />,
-    );
-    expect(
-      getByText(
-        'This situation shows concerning patterns. Consider setting boundaries.',
-      ),
-    ).toBeTruthy();
-  });
-
-  // ── Check Another button ─────────────────────────────
-
   it('renders a Check Another button', () => {
     const { getByText } = render(
-      <ResultCard {...mockResult} onTryAgain={jest.fn()} />,
+      <ResultCard
+        {...mockResult}
+        onTryAgain={jest.fn()}
+        onViewSuggestions={jest.fn()}
+      />,
     );
     expect(getByText('Check Another')).toBeTruthy();
   });
@@ -60,61 +51,39 @@ describe('ResultCard', () => {
   it('calls onTryAgain when Check Another is pressed', () => {
     const onTryAgain = jest.fn();
     const { getByText } = render(
-      <ResultCard {...mockResult} onTryAgain={onTryAgain} />,
+      <ResultCard
+        {...mockResult}
+        onTryAgain={onTryAgain}
+        onViewSuggestions={jest.fn()}
+      />,
     );
     fireEvent.press(getByText('Check Another'));
     expect(onTryAgain).toHaveBeenCalledTimes(1);
   });
 
-  // ── Why? toggle ──────────────────────────────────────
-
-  it('shows a Why? toggle button', () => {
+  it('shows View suggestions link when reasons exist', () => {
     const { getByText } = render(
-      <ResultCard {...mockResult} onTryAgain={jest.fn()} />,
+      <ResultCard
+        {...mockResult}
+        onTryAgain={jest.fn()}
+        onViewSuggestions={jest.fn()}
+      />,
     );
-    expect(getByText(/Why\?/)).toBeTruthy();
+    expect(getByText('View suggestions')).toBeTruthy();
   });
 
-  it('shows reasons when Why? is pressed (toggled on)', () => {
-    const { getByText, queryByText } = render(
-      <ResultCard {...mockResult} onTryAgain={jest.fn()} />,
+  it('calls onViewSuggestions when link is pressed', () => {
+    const onViewSuggestions = jest.fn();
+    const { getByText } = render(
+      <ResultCard
+        {...mockResult}
+        onTryAgain={jest.fn()}
+        onViewSuggestions={onViewSuggestions}
+      />,
     );
-
-    // Reasons should be hidden initially
-    expect(queryByText('Detected love-bombing language patterns')).toBeNull();
-
-    // Press Why?
-    fireEvent.press(getByText(/Why\?/));
-
-    // Reasons should now be visible
-    expect(
-      getByText('Detected love-bombing language patterns'),
-    ).toBeTruthy();
-    expect(
-      getByText('High incidence of deflection and blame-shifting'),
-    ).toBeTruthy();
-    expect(
-      getByText('Contains controlling ultimatum phrasing'),
-    ).toBeTruthy();
+    fireEvent.press(getByText('View suggestions'));
+    expect(onViewSuggestions).toHaveBeenCalledTimes(1);
   });
-
-  it('hides reasons when Why? is pressed again (toggled off)', () => {
-    const { getByText, queryByText } = render(
-      <ResultCard {...mockResult} onTryAgain={jest.fn()} />,
-    );
-
-    // Show
-    fireEvent.press(getByText(/Why\?/));
-    expect(
-      getByText('Detected love-bombing language patterns'),
-    ).toBeTruthy();
-
-    // Hide
-    fireEvent.press(getByText(/Why\?/));
-    expect(queryByText('Detected love-bombing language patterns')).toBeNull();
-  });
-
-  // ── Edge cases ───────────────────────────────────────
 
   it('renders with an empty reasons array', () => {
     const { unmount } = render(
@@ -125,6 +94,7 @@ describe('ResultCard', () => {
         advice="Looks fine."
         reasons={[]}
         onTryAgain={jest.fn()}
+        onViewSuggestions={jest.fn()}
       />,
     );
     expect(() => unmount()).not.toThrow();

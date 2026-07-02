@@ -1,10 +1,15 @@
-import React, { useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  Keyboard,
+} from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withTiming,
-  withDelay,
   Easing,
 } from 'react-native-reanimated';
 import {
@@ -14,29 +19,34 @@ import {
   radii,
   animation,
 } from '@/constants/theme';
+import { AppTextInput } from '@/components/keyboard';
+import { HeroMicIcon } from './HeroMicIcon';
+import type { FollowUpQuestion } from '@/types';
 
 interface QuestionPromptProps {
-  /** The follow-up question text. */
-  question: string;
-  /** 2–3 answer choices. */
-  choices: string[];
-  /** Called when the user picks an answer. */
-  onSelect: (answer: string) => void;
+  question: FollowUpQuestion;
+  onSubmit: (answer: string) => void;
+  speechAvailable?: boolean;
+  onVoicePress?: () => void;
 }
 
 /**
- * Follow-up question card with animated entry (fade + slide up).
- * Used when the AI needs more context to resolve an ambiguous score.
+ * Follow-up question card — multiple-choice or open text (with optional mic).
  */
 export function QuestionPrompt({
   question,
-  choices,
-  onSelect,
+  onSubmit,
+  speechAvailable = false,
+  onVoicePress,
 }: QuestionPromptProps) {
+  const [textAnswer, setTextAnswer] = useState('');
   const opacity = useSharedValue(0);
   const translateY = useSharedValue(40);
 
   useEffect(() => {
+    setTextAnswer('');
+    opacity.value = 0;
+    translateY.value = 40;
     opacity.value = withTiming(1, {
       duration: animation.questionEntry,
       easing: Easing.out(Easing.ease),
@@ -45,29 +55,69 @@ export function QuestionPrompt({
       duration: animation.questionEntry,
       easing: Easing.out(Easing.ease),
     });
-  }, [opacity, translateY]);
+  }, [question.question, opacity, translateY]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateY: translateY.value }],
   }));
 
+  const handleOpenSubmit = () => {
+    const trimmed = textAnswer.trim();
+    if (!trimmed) return;
+    Keyboard.dismiss();
+    onSubmit(trimmed);
+  };
+
   return (
     <Animated.View style={[styles.card, animatedStyle]}>
-      <Text style={styles.question}>{question}</Text>
+      <Text style={styles.question}>{question.question}</Text>
 
-      <View style={styles.choices}>
-        {choices.map((choice, index) => (
+      {question.type === 'choice' && question.choices ? (
+        <View style={styles.choices}>
+          {question.choices.map((choice, index) => (
+            <TouchableOpacity
+              key={`${choice}-${index}`}
+              style={styles.choiceButton}
+              onPress={() => onSubmit(choice)}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.choiceText}>{choice}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      ) : (
+        <View style={styles.openAnswer}>
+          <View style={styles.inputRow}>
+            <AppTextInput
+              style={styles.textInput}
+              placeholder="Type your answer..."
+              multiline
+              value={textAnswer}
+              onChangeText={setTextAnswer}
+              onSubmitEditing={handleOpenSubmit}
+            />
+            {speechAvailable && onVoicePress && (
+              <TouchableOpacity
+                style={styles.micButton}
+                accessibilityLabel="Answer with voice"
+                activeOpacity={0.7}
+                onPress={onVoicePress}
+              >
+                <HeroMicIcon size={22} color={colors.navy} />
+              </TouchableOpacity>
+            )}
+          </View>
           <TouchableOpacity
-            key={index}
-            style={styles.choiceButton}
-            onPress={() => onSelect(choice)}
+            style={[styles.submitButton, !textAnswer.trim() && styles.submitDisabled]}
+            onPress={handleOpenSubmit}
+            disabled={!textAnswer.trim()}
             activeOpacity={0.7}
           >
-            <Text style={styles.choiceText}>{choice}</Text>
+            <Text style={styles.submitText}>Continue</Text>
           </TouchableOpacity>
-        ))}
-      </View>
+        </View>
+      )}
     </Animated.View>
   );
 }
@@ -105,5 +155,40 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     fontWeight: typography.weights.medium,
     color: colors.textPrimary,
+  },
+  openAnswer: {
+    gap: spacing.md,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing.sm,
+  },
+  textInput: {
+    flex: 1,
+    minHeight: 100,
+  },
+  micButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.gray100,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.xs,
+  },
+  submitButton: {
+    backgroundColor: colors.navy,
+    borderRadius: radii.full,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  submitDisabled: {
+    opacity: 0.4,
+  },
+  submitText: {
+    fontSize: typography.sizes.base,
+    fontWeight: typography.weights.semibold,
+    color: colors.white,
   },
 });

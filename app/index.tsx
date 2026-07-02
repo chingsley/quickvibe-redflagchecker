@@ -4,17 +4,18 @@ import {
   View,
   Text,
   TouchableOpacity,
-  TextInput,
+  Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useRouter } from 'expo-router';
 import { useRedFlagAnalysis, isSpeechAvailable } from '@/hooks/useRedFlagAnalysis';
 import { useHapticSync } from '@/hooks/useHapticSync';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { MicButton } from '@/components/MicButton';
-import { CircularLoader } from '@/components/CircularLoader';
-import { BackgroundGradient } from '@/components/BackgroundGradient';
+import { AnalyzingLoader } from '@/components/AnalyzingLoader';
 import { QuestionPrompt } from '@/components/QuestionPrompt';
 import { ResultCard } from '@/components/ResultCard';
+import { AppTextInput, KeyboardAwareScreen } from '@/components/keyboard';
 import { colors, spacing, typography } from '@/constants/theme';
 
 type InputMode = 'voice' | 'text';
@@ -27,22 +28,15 @@ function formatTimer(seconds: number): string {
 
 function HomeShell({
   children,
-  showDemoBadge,
+  scrollable = false,
 }: {
   children: React.ReactNode;
-  showDemoBadge?: boolean;
+  scrollable?: boolean;
 }) {
-  return (
-    <SafeAreaView style={styles.screen}>
-      {showDemoBadge && (
-        <View style={styles.demoBadge}>
-          <Text style={styles.demoBadgeIcon}>⚡</Text>
-          <Text style={styles.demoBadgeText}>Demo Mode</Text>
-        </View>
-      )}
-
+  const content = (
+    <>
       <View style={styles.header}>
-        <Text style={styles.title}>FlagCheck</Text>
+        <Text style={styles.title}>VibeCheck</Text>
         <Text style={styles.subtitle}>
           Tap the mic and tell us about your experience. We'll analyze it for you.
         </Text>
@@ -54,17 +48,29 @@ function HomeShell({
         Speak naturally about a date, conversation, or situation. Our AI will
         detect patterns and flag potential concerns.
       </Text>
-    </SafeAreaView>
+    </>
   );
+
+  if (scrollable) {
+    return (
+      <KeyboardAwareScreen contentContainerStyle={styles.homeScrollContent}>
+        {content}
+      </KeyboardAwareScreen>
+    );
+  }
+
+  return <SafeAreaView style={styles.screen}>{content}</SafeAreaView>;
 }
 
 export default function HomeScreen() {
+  const router = useRouter();
   const analysis = useRedFlagAnalysis();
   useHapticSync(analysis.progress);
   useSoundEffects(analysis.status);
 
   const {
     status, score, result, error,
+    pendingQuestions, followUpIndex,
     startFlow, submitAnswer, submitText, reset, clearError,
   } = analysis;
 
@@ -112,34 +118,39 @@ export default function HomeScreen() {
 
   if (status === 'idle') {
     if (inputMode === 'text') {
+      const handleAnalyze = () => {
+        if (!textInput.trim()) return;
+        Keyboard.dismiss();
+        submitText(textInput.trim());
+        setTextInput('');
+      };
+
       return (
-        <HomeShell showDemoBadge={!speechAvailable}>
+        <HomeShell scrollable>
           <View style={styles.textModeSection}>
             <Text style={styles.textModeLabel}>Share your experience:</Text>
-            <TextInput
+            <AppTextInput
               style={styles.textInput}
               placeholder="Type what happened..."
-              placeholderTextColor={colors.textSecondary}
               multiline
               numberOfLines={5}
               value={textInput}
               onChangeText={setTextInput}
+              onSubmitEditing={handleAnalyze}
             />
             <TouchableOpacity
               style={[styles.submitButton, !textInput.trim() && styles.submitDisabled]}
-              onPress={() => {
-                if (textInput.trim()) {
-                  submitText(textInput.trim());
-                  setTextInput('');
-                }
-              }}
+              onPress={handleAnalyze}
               disabled={!textInput.trim()}
             >
               <Text style={styles.submitText}>Analyze</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.modeLinkButton}
-              onPress={() => setInputMode('voice')}
+              onPress={() => {
+                Keyboard.dismiss();
+                setInputMode('voice');
+              }}
             >
               <Text style={styles.modeLink}>Use microphone instead</Text>
             </TouchableOpacity>
@@ -149,7 +160,7 @@ export default function HomeScreen() {
     }
 
     return (
-      <HomeShell showDemoBadge={!speechAvailable}>
+      <HomeShell>
         <View style={styles.micSection}>
           <MicButton
             variant="hero"
@@ -191,52 +202,36 @@ export default function HomeScreen() {
     );
   }
 
-  // ── Transcribing — Loading ────────────────────────────
+  // ── Transcribing / Morphing / Analyzing — unified loader ──
 
-  if (status === 'transcribing') {
+  if (status === 'transcribing' || status === 'morphing' || status === 'analyzing') {
+    const message =
+      status === 'transcribing' ? 'Transcribing' : 'Analysing';
+
     return (
       <View style={styles.center}>
-        <CircularLoader progress={0} loading showScore={false} showLabel />
-        <Text style={styles.hint}>Transcribing…</Text>
+        <AnalyzingLoader message={message} />
       </View>
     );
   }
 
-  // ── Morphing — Mic → Ring ─────────────────────────────
+  // ── Follow-up — Questions only, no score ──────────────
 
-  if (status === 'morphing') {
-    return (
-      <View style={styles.center}>
-        <CircularLoader progress={25} loading showScore={false} showLabel />
-        <Text style={styles.hint}>Analysing…</Text>
-      </View>
-    );
-  }
-
-  // ── Analyzing / FollowUp — Loader + bg shift ──────────
-
-  if (status === 'analyzing' || status === 'followUp') {
-    const currentScore = score > 0 ? score : 50;
+  if (status === 'followUp' && pendingQuestions.length > 0) {
+    const currentQuestion = pendingQuestions[followUpIndex];
 
     return (
-      <BackgroundGradient score={currentScore}>
-        <View style={styles.center}>
-          <CircularLoader
-            progress={currentScore}
-            loading={status === 'analyzing' && score === 0}
-            showScore
-            showLabel
-          />
-
-          {status === 'followUp' && result?.followUpQuestions && (
-            <QuestionPrompt
-              question={result.followUpQuestions[0]}
-              choices={['Yes', 'No', 'Not sure']}
-              onSelect={submitAnswer}
-            />
-          )}
-        </View>
-      </BackgroundGradient>
+      <KeyboardAwareScreen centerContent bottomInset={120}>
+        <Text style={styles.followUpTitle}>A few quick questions</Text>
+        <Text style={styles.followUpSubtitle}>
+          Help us understand the situation before we score it.
+        </Text>
+        <QuestionPrompt
+          question={currentQuestion}
+          onSubmit={submitAnswer}
+          speechAvailable={speechAvailable}
+        />
+      </KeyboardAwareScreen>
     );
   }
 
@@ -244,16 +239,24 @@ export default function HomeScreen() {
 
   if (status === 'complete' && result) {
     return (
-      <BackgroundGradient score={score}>
-        <ResultCard
-          score={result.score}
-          category={result.category}
-          label={result.label}
-          advice={result.advice}
-          reasons={result.reasons}
-          onTryAgain={handleTryAgain}
-        />
-      </BackgroundGradient>
+      <ResultCard
+        score={result.score}
+        category={result.category}
+        label={result.label}
+        advice={result.advice}
+        reasons={result.reasons}
+        onTryAgain={handleTryAgain}
+        onViewSuggestions={() =>
+          router.push({
+            pathname: '/breakdown',
+            params: {
+              label: result.label,
+              advice: result.advice,
+              reasons: JSON.stringify(result.reasons),
+            },
+          })
+        }
+      />
     );
   }
 
@@ -266,30 +269,14 @@ const styles = StyleSheet.create({
     backgroundColor: colors.white,
     paddingHorizontal: spacing.lg,
   },
+  homeScrollContent: {
+    paddingHorizontal: 0,
+  },
   center: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.white,
-  },
-  demoBadge: {
-    alignSelf: 'flex-end',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: colors.demoBadgeBg,
-    borderRadius: 9999,
-    paddingVertical: spacing.xs + 2,
-    paddingHorizontal: spacing.md,
-    marginTop: spacing.sm,
-    gap: spacing.xs,
-  },
-  demoBadgeIcon: {
-    fontSize: typography.sizes.sm,
-  },
-  demoBadgeText: {
-    fontSize: typography.sizes.sm,
-    fontWeight: typography.weights.medium,
-    color: colors.gray700,
   },
   header: {
     alignItems: 'center',
@@ -317,11 +304,9 @@ const styles = StyleSheet.create({
     marginTop: -spacing.xl,
   },
   textModeSection: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
     width: '100%',
     paddingHorizontal: spacing.sm,
+    paddingTop: spacing.md,
   },
   micHint: {
     fontSize: typography.sizes.base,
@@ -360,16 +345,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   textInput: {
-    width: '100%',
     minHeight: 140,
-    borderWidth: 1,
-    borderColor: colors.gray300,
-    borderRadius: 12,
-    padding: spacing.md,
-    fontSize: typography.sizes.base,
-    color: colors.textPrimary,
-    textAlignVertical: 'top',
-    backgroundColor: colors.white,
   },
   submitButton: {
     backgroundColor: colors.navy,
@@ -420,5 +396,19 @@ const styles = StyleSheet.create({
     fontSize: typography.sizes.base,
     fontWeight: typography.weights.semibold,
     color: colors.white,
+  },
+  followUpTitle: {
+    fontSize: typography.sizes.xl,
+    fontWeight: typography.weights.bold,
+    color: colors.navy,
+    textAlign: 'center',
+    marginBottom: spacing.sm,
+  },
+  followUpSubtitle: {
+    fontSize: typography.sizes.base,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginBottom: spacing.xl,
+    lineHeight: 22,
   },
 });

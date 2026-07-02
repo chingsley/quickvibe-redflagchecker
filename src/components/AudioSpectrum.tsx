@@ -19,6 +19,8 @@ interface AudioSpectrumProps {
   ringCount?: number;
   /** Width / height of the container in points. */
   size?: number;
+  /** Optional override for ring border color. */
+  ringColor?: string;
 }
 
 const { ringCount: defaultRingCount, staggerDelay, maxScale } = spectrumConfig;
@@ -33,6 +35,7 @@ export function AudioSpectrum({
   audioLevel = 0.5,
   ringCount = defaultRingCount,
   size = 120,
+  ringColor,
 }: AudioSpectrumProps) {
   // Create one animated value per ring
   const ringAnimations = useMemo(
@@ -79,7 +82,8 @@ export function AudioSpectrum({
 
         const ringSize = size * (0.35 + index * 0.08);
         const color =
-          index % 2 === 0 ? colors.micBlue : colors.spectrumLight;
+          ringColor ??
+          (index % 2 === 0 ? colors.micBlue : colors.spectrumLight);
 
         return (
           <Animated.View

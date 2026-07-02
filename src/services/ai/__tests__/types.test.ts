@@ -74,7 +74,7 @@ describe('AIProvider interface', () => {
         'Detected love-bombing language patterns',
         'High incidence of deflection',
       ],
-      followUpQuestions: ['Can you elaborate on X?'],
+      followUpQuestions: [{ question: 'Can you elaborate on X?', type: 'open' }],
     };
 
     expect(typeof result.score).toBe('number');
