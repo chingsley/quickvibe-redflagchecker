@@ -20,6 +20,8 @@ interface MorphIconProps {
   accessibilityLabel?: string;
   /** Width / height of the SVG viewport in points. */
   size?: number;
+  /** Fill color for the morph path. */
+  fillColor?: string;
 }
 
 /**
@@ -33,6 +35,7 @@ export function MorphIcon({
   state = 'mic',
   accessibilityLabel,
   size = 260,
+  fillColor = '#111827',
 }: MorphIconProps) {
   // 0 = mic, 1 = ring
   const progress = useSharedValue(state === 'mic' ? 0 : 1);
@@ -80,7 +83,7 @@ export function MorphIcon({
         {/* Animated morph path */}
         <AnimatedPath
           animatedProps={animatedProps}
-          fill="#111827"
+          fill={fillColor}
           stroke="none"
         />
       </Svg>

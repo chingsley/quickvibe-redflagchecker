@@ -16,6 +16,10 @@ interface MicButtonProps {
   size?: number;
   /** Accessibility label for screen readers. */
   accessibilityLabel?: string;
+  /** Visual style — hero matches the FlagCheck home screen design. */
+  variant?: 'default' | 'hero';
+  /** When true, the button is visible but not tappable. */
+  disabled?: boolean;
 }
 
 /**
@@ -29,17 +33,39 @@ export function MicButton({
   audioLevel = 0.5,
   size = 200,
   accessibilityLabel,
+  variant = 'default',
+  disabled = false,
 }: MicButtonProps) {
   const isActive = recordingState === 'listening';
+  const isHero = variant === 'hero';
+  const isProcessing = recordingState === 'processing';
+  const isDisabled = disabled || isProcessing;
+  const buttonSize = isHero ? size * 0.58 : size * 0.55;
+  const iconSize = isHero ? size * 0.28 : size * 0.5;
 
   return (
     <View style={[styles.container, { width: size, height: size }]}>
+      {isHero && (
+        <View
+          style={[
+            styles.heroRing,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+            },
+          ]}
+        />
+      )}
+
       {/* Spectrum rings (behind the mic) */}
-      <AudioSpectrum
-        isActive={isActive}
-        audioLevel={audioLevel}
-        size={size * 1.2}
-      />
+      {!isHero && (
+        <AudioSpectrum
+          isActive={isActive}
+          audioLevel={audioLevel}
+          size={size * 1.2}
+        />
+      )}
 
       {/* Mic icon (tappable) */}
       <TouchableOpacity
@@ -48,14 +74,20 @@ export function MicButton({
         accessibilityLabel={accessibilityLabel ?? 'Record experience'}
         accessibilityRole="button"
         accessibilityState={{
-          disabled: recordingState === 'processing',
+          disabled: isDisabled,
         }}
-        disabled={recordingState === 'processing'}
-        style={[styles.button, { width: size * 0.55, height: size * 0.55 }]}
+        disabled={isDisabled}
+        style={[
+          styles.button,
+          isHero && styles.heroButton,
+          { width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 },
+          isDisabled && styles.disabled,
+        ]}
       >
         <MorphIcon
           state="mic"
-          size={size * 0.5}
+          size={iconSize}
+          fillColor={isHero ? colors.white : colors.black}
           accessibilityLabel={undefined}
         />
       </TouchableOpacity>
@@ -71,17 +103,31 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  heroRing: {
+    position: 'absolute',
+    borderWidth: 1,
+    borderColor: '#e8ecf0',
+    backgroundColor: '#fafbfc',
+  },
   button: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: colors.white,
     borderRadius: 9999,
-    // Subtle shadow for depth
     shadowColor: colors.black,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
     shadowRadius: 12,
     elevation: 6,
+  },
+  heroButton: {
+    backgroundColor: colors.navy,
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  disabled: {
+    opacity: 0.45,
   },
   activeDot: {
     position: 'absolute',

@@ -63,6 +63,25 @@ describe('MicButton', () => {
 
   // ── Size prop ────────────────────────────────────────
 
+  it('does not call onPress when disabled', () => {
+    const onPress = jest.fn();
+    const { getByLabelText } = render(
+      <MicButton
+        onPress={onPress}
+        disabled
+        accessibilityLabel="Record your experience"
+      />,
+    );
+
+    fireEvent.press(getByLabelText('Record your experience'));
+    expect(onPress).not.toHaveBeenCalled();
+  });
+
+  it('renders hero variant without crashing', () => {
+    const { unmount } = render(<MicButton variant="hero" />);
+    expect(() => unmount()).not.toThrow();
+  });
+
   it('accepts a custom size prop', () => {
     const { unmount } = render(<MicButton size={180} />);
     expect(() => unmount()).not.toThrow();

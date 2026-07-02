@@ -1,41 +1,65 @@
 /**
  * Speech recognition service.
- * Falls back gracefully when the native module is not available (e.g. in Expo Go).
+ * Falls back gracefully when the native module is not available (e.g. Expo Go, web).
  */
+
+import { Platform } from 'react-native';
+import { requireOptionalNativeModule } from 'expo-modules-core';
+
+const SPEECH_MODULE_NAME = 'ExpoSpeechRecognition';
+const UNAVAILABLE_MESSAGE =
+  'Speech recognition is not available. Use text input or a development build for voice.';
 
 let ExpoSpeechRecognitionModule: any = null;
 let speechAvailable: boolean | null = null;
 
-function getModule(): any {
-  if (speechAvailable === null) {
-    try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      const mod = require('expo-speech-recognition');
-      ExpoSpeechRecognitionModule = mod.ExpoSpeechRecognitionModule;
-      speechAvailable = !!ExpoSpeechRecognitionModule;
-    } catch {
-      speechAvailable = false;
-    }
+function probeAvailability(): boolean {
+  if (speechAvailable !== null) {
+    return speechAvailable;
   }
-  if (!speechAvailable) {
-    throw new Error(
-      'Speech recognition is not available in Expo Go. Use a development build for voice input.',
+
+  if (Platform.OS === 'web') {
+    speechAvailable = false;
+    console.warn(
+      '[QuickVibe] Speech recognition is unavailable on web. Mic disabled — use "Type instead".',
     );
+    return false;
+  }
+
+  try {
+    const nativeModule = requireOptionalNativeModule(SPEECH_MODULE_NAME);
+    if (nativeModule) {
+      ExpoSpeechRecognitionModule = nativeModule;
+      speechAvailable = true;
+      return true;
+    }
+
+    speechAvailable = false;
+    console.warn(
+      '[QuickVibe] Speech recognition native module not found. Mic disabled — use "Type instead".',
+    );
+    return false;
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn('[QuickVibe] Speech recognition unavailable:', message);
+    speechAvailable = false;
+    return false;
+  }
+}
+
+function getModule(): any {
+  if (!probeAvailability()) {
+    throw new Error(UNAVAILABLE_MESSAGE);
   }
   return ExpoSpeechRecognitionModule;
 }
 
 /** Check if speech recognition is available on this device. */
 export function isSpeechAvailable(): boolean {
-  try {
-    getModule();
-    return true;
-  } catch {
-    return false;
-  }
+  return probeAvailability();
 }
 
-/** Inline permission statuses to avoid importing expo-modules-core (triggers native fetch polyfill in tests). */
+/** Inline permission statuses to avoid importing expo-modules-core enums in tests. */
 const GRANTED = 'granted';
 
 /**
@@ -67,7 +91,7 @@ export async function startListening(): Promise<void> {
  * Stop the active recognition session.
  * Results come through the useSpeechRecognitionEvent hook / event listeners.
  */
-export async function stopListening(): Promise<any> {
+export async function stopListening(): Promise<null> {
   const module = getModule();
   await module.stop();
   return null;

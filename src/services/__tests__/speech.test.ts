@@ -1,13 +1,46 @@
-import { startListening, stopListening } from '../speech';
-import {
-  mockStart,
-  mockStop,
-  mockGetPerms,
-  mockRequestPerms,
-} from 'expo-speech-recognition';
+const mockStart = jest.fn();
+const mockStop = jest.fn();
+const mockGetPerms = jest.fn();
+const mockRequestPerms = jest.fn();
+
+const mockNativeModule = {
+  start: mockStart,
+  stop: mockStop,
+  getSpeechRecognizerPermissionsAsync: mockGetPerms,
+  requestSpeechRecognizerPermissionsAsync: mockRequestPerms,
+};
+
+const mockRequireOptionalNativeModule = jest.fn(() => mockNativeModule);
+
+jest.mock('expo-modules-core', () => ({
+  requireOptionalNativeModule: (...args: unknown[]) =>
+    mockRequireOptionalNativeModule(...args),
+}));
+
+import { startListening, stopListening, isSpeechAvailable } from '../speech';
 
 describe('speech service', () => {
-  beforeEach(() => { jest.clearAllMocks(); });
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockRequireOptionalNativeModule.mockReturnValue(mockNativeModule);
+  });
+
+  it('reports speech as available when native module exists', () => {
+    expect(isSpeechAvailable()).toBe(true);
+  });
+
+  it('reports speech as unavailable when native module is missing', () => {
+    const warnSpy = jest.spyOn(console, 'warn').mockImplementation(() => {});
+
+    jest.isolateModules(() => {
+      mockRequireOptionalNativeModule.mockReturnValue(null);
+      const { isSpeechAvailable: probe } = require('../speech');
+      expect(probe()).toBe(false);
+      expect(warnSpy).toHaveBeenCalled();
+    });
+
+    warnSpy.mockRestore();
+  });
 
   it('requests permission if not granted', async () => {
     mockGetPerms.mockResolvedValueOnce({ status: 'denied' });
@@ -34,7 +67,7 @@ describe('speech service', () => {
     mockStop.mockResolvedValueOnce(undefined);
     const result = await stopListening();
     expect(mockStop).toHaveBeenCalled();
-    expect(result).toBeNull(); // results come via events, not return value
+    expect(result).toBeNull();
   });
 
   it('stopListening propagates errors', async () => {
