@@ -1,12 +1,12 @@
 {
   "expo": {
-    "name": "QuickVibe",
-    "slug": "quickvibe",
+    "name": "VibeMeter",
+    "slug": "vibemeter",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-    "scheme": "quickvibe",
+    "scheme": "vibemeter",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
@@ -15,12 +15,16 @@
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
-        "NSMicrophoneUsageDescription": "QuickVibe needs microphone access to record your experience for red flag analysis.",
-        "NSSpeechRecognitionUsageDescription": "QuickVibe uses speech recognition to transcribe your spoken experience."
+        "NSAppTransportSecurity": {
+          "NSAllowsLocalNetworking": true
+        },
+        "NSMicrophoneUsageDescription": "VibeMeter needs microphone access to record your experience for red flag analysis.",
+        "NSSpeechRecognitionUsageDescription": "VibeMeter uses speech recognition to transcribe your spoken experience."
       },
-      "bundleIdentifier": "com.quickvibe.app"
+      "bundleIdentifier": "com.vibemeter.app"
     },
     "android": {
+      "usesCleartextTraffic": true,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/android-icon-foreground.png",
@@ -31,7 +35,7 @@
       "permissions": [
         "RECORD_AUDIO"
       ],
-      "package": "com.quickvibe.app"
+      "package": "com.vibemeter.app"
     },
     "web": {
       "favicon": "./assets/favicon.png"
@@ -43,7 +47,7 @@
       [
         "expo-av",
         {
-          "microphonePermission": "QuickVibe needs microphone access to record your experience for red flag analysis."
+          "microphonePermission": "VibeMeter needs microphone access to record your experience for red flag analysis."
         }
       ]
     ]

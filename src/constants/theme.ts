@@ -165,10 +165,21 @@ export function text(
 export const spacing = {
   xs: 4,
   sm: 8,
+  sml: 12,
   md: 16,
   lg: 24,
   xl: 32,
   xxl: 48,
+} as const;
+
+// ─── Gestalt Grouping ───────────────────────────────────
+
+/** Proximity spacing for the gestalt grouping system. */
+export const gestalt = {
+  /** Vertical gap between adjacent groups (e.g. one section to the next). */
+  groupGap: spacing.xxl,
+  /** Vertical gap between items inside a group, including the group header. */
+  itemGap: spacing.md,
 } as const;
 
 // ─── Radii ──────────────────────────────────────────────

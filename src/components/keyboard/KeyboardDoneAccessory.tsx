@@ -10,7 +10,7 @@ import { AppText } from '@/components/AppText';
 import { colors, spacing, text } from '@/constants/theme';
 
 /** Shared native ID — all AppTextInput fields attach to this toolbar. */
-export const KEYBOARD_DONE_ACCESSORY_ID = 'vibecheck-keyboard-done';
+export const KEYBOARD_DONE_ACCESSORY_ID = 'vibemeter-keyboard-done';
 
 /** iOS keyboard toolbar with a Done button to dismiss the keyboard. */
 export function KeyboardDoneAccessory() {
