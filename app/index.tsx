@@ -2,12 +2,12 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
-  Text,
   TouchableOpacity,
   Keyboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+import { AppText } from '@/components/AppText';
 import { useRedFlagAnalysis, isSpeechAvailable } from '@/hooks/useRedFlagAnalysis';
 import { useHapticSync } from '@/hooks/useHapticSync';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
@@ -16,7 +16,7 @@ import { AnalyzingLoader } from '@/components/AnalyzingLoader';
 import { QuestionPrompt } from '@/components/QuestionPrompt';
 import { ResultCard } from '@/components/ResultCard';
 import { AppTextInput, KeyboardAwareScreen } from '@/components/keyboard';
-import { colors, spacing, typography } from '@/constants/theme';
+import { colors, spacing, text, typography } from '@/constants/theme';
 
 type InputMode = 'voice' | 'text';
 
@@ -36,18 +36,18 @@ function HomeShell({
   const content = (
     <>
       <View style={styles.header}>
-        <Text style={styles.title}>VibeCheck</Text>
-        <Text style={styles.subtitle}>
+        <AppText style={styles.title}>VibeCheck</AppText>
+        <AppText style={styles.subtitle}>
           Tap the mic and tell us about your experience. We'll analyze it for you.
-        </Text>
+        </AppText>
       </View>
 
       {children}
 
-      <Text style={styles.footerText}>
+      <AppText style={styles.footerText}>
         Speak naturally about a date, conversation, or situation. Our AI will
         detect patterns and flag potential concerns.
-      </Text>
+      </AppText>
     </>
   );
 
@@ -104,11 +104,11 @@ export default function HomeScreen() {
   if (error) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorIcon}>⚠️</Text>
-        <Text style={styles.errorTitle}>Something went wrong</Text>
-        <Text style={styles.errorMessage}>{error}</Text>
+        <AppText style={styles.errorIcon}>⚠️</AppText>
+        <AppText style={styles.errorTitle}>Something went wrong</AppText>
+        <AppText style={styles.errorMessage}>{error}</AppText>
         <TouchableOpacity style={styles.retryButton} onPress={clearError}>
-          <Text style={styles.retryText}>Try Again</Text>
+          <AppText style={styles.retryText}>Try Again</AppText>
         </TouchableOpacity>
       </View>
     );
@@ -128,7 +128,7 @@ export default function HomeScreen() {
       return (
         <HomeShell scrollable>
           <View style={styles.textModeSection}>
-            <Text style={styles.textModeLabel}>Share your experience:</Text>
+            <AppText style={styles.textModeLabel}>Share your experience:</AppText>
             <AppTextInput
               style={styles.textInput}
               placeholder="Type what happened..."
@@ -143,7 +143,7 @@ export default function HomeScreen() {
               onPress={handleAnalyze}
               disabled={!textInput.trim()}
             >
-              <Text style={styles.submitText}>Analyze</Text>
+              <AppText style={styles.submitText}>Analyze</AppText>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.modeLinkButton}
@@ -152,7 +152,7 @@ export default function HomeScreen() {
                 setInputMode('voice');
               }}
             >
-              <Text style={styles.modeLink}>Use microphone instead</Text>
+              <AppText style={styles.modeLink}>Use microphone instead</AppText>
             </TouchableOpacity>
           </View>
         </HomeShell>
@@ -169,13 +169,13 @@ export default function HomeScreen() {
             onPress={speechAvailable ? startFlow : undefined}
             accessibilityLabel="Record your experience"
           />
-          <Text style={styles.micHint}>Tap to start recording</Text>
-          <Text style={styles.timer}>{formatTimer(elapsedSeconds)}</Text>
+          <AppText style={styles.micHint}>Tap to start recording</AppText>
+          <AppText style={styles.timer}>{formatTimer(elapsedSeconds)}</AppText>
           <TouchableOpacity
             style={styles.modeLinkButton}
             onPress={() => setInputMode('text')}
           >
-            <Text style={styles.modeLink}>Type instead</Text>
+            <AppText style={styles.modeLink}>Type instead</AppText>
           </TouchableOpacity>
         </View>
       </HomeShell>
@@ -195,8 +195,8 @@ export default function HomeScreen() {
             onPress={startFlow}
             accessibilityLabel="Stop recording"
           />
-          <Text style={styles.micHint}>Listening… tap to stop</Text>
-          <Text style={styles.timer}>{formatTimer(elapsedSeconds)}</Text>
+          <AppText style={styles.micHint}>Listening… tap to stop</AppText>
+          <AppText style={styles.timer}>{formatTimer(elapsedSeconds)}</AppText>
         </View>
       </HomeShell>
     );
@@ -222,10 +222,10 @@ export default function HomeScreen() {
 
     return (
       <KeyboardAwareScreen centerContent bottomInset={120}>
-        <Text style={styles.followUpTitle}>A few quick questions</Text>
-        <Text style={styles.followUpSubtitle}>
+        <AppText style={styles.followUpTitle}>A few quick questions</AppText>
+        <AppText style={styles.followUpSubtitle}>
           Help us understand the situation before we score it.
-        </Text>
+        </AppText>
         <QuestionPrompt
           question={currentQuestion}
           onSubmit={submitAnswer}
@@ -285,16 +285,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.md,
   },
   title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+    ...text('xxl', 'bold', 'tight'),
     color: colors.navy,
     marginBottom: spacing.md,
   },
   subtitle: {
-    fontSize: typography.sizes.base,
+    ...text('base', 'regular', 'relaxed'),
     color: colors.textSecondary,
     textAlign: 'center',
-    lineHeight: 24,
     maxWidth: 320,
   },
   micSection: {
@@ -309,13 +307,12 @@ const styles = StyleSheet.create({
     paddingTop: spacing.md,
   },
   micHint: {
-    fontSize: typography.sizes.base,
+    ...text('base', 'regular', 'relaxed'),
     color: colors.textSecondary,
     marginTop: spacing.xl,
   },
   timer: {
-    fontSize: typography.sizes.hero,
-    fontWeight: typography.weights.bold,
+    ...text('hero', 'bold', 'tight'),
     color: colors.navy,
     marginTop: spacing.lg,
     fontVariant: ['tabular-nums'],
@@ -325,20 +322,19 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.sm,
   },
   modeLink: {
-    fontSize: typography.sizes.sm,
+    ...text('sm', 'medium', 'normal'),
     color: colors.gray500,
     textDecorationLine: 'underline',
   },
   footerText: {
-    fontSize: typography.sizes.sm,
+    ...text('sm', 'regular', 'relaxed'),
     color: colors.gray500,
     textAlign: 'center',
-    lineHeight: 22,
     paddingHorizontal: spacing.md,
     marginBottom: spacing.xl,
   },
   textModeLabel: {
-    fontSize: typography.sizes.base,
+    ...text('base', 'regular', 'relaxed'),
     color: colors.textSecondary,
     marginBottom: spacing.md,
     alignSelf: 'flex-start',
@@ -360,27 +356,25 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   submitText: {
-    fontSize: typography.sizes.base,
+    ...text('base', 'semibold', 'normal'),
     color: colors.white,
-    fontWeight: typography.weights.semibold,
   },
   hint: {
-    fontSize: typography.sizes.sm,
+    ...text('sm', 'regular', 'relaxed'),
     color: colors.gray500,
     marginTop: spacing.xl,
   },
   errorIcon: {
-    fontSize: 48,
+    fontSize: typography.sizes.hero,
     marginBottom: spacing.md,
   },
   errorTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.semibold,
+    ...text('xl', 'semibold', 'tight'),
     color: colors.textPrimary,
     marginBottom: spacing.sm,
   },
   errorMessage: {
-    fontSize: typography.sizes.base,
+    ...text('base', 'regular', 'relaxed'),
     color: colors.textSecondary,
     textAlign: 'center',
     paddingHorizontal: spacing.xl,
@@ -393,22 +387,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   retryText: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    ...text('base', 'semibold', 'normal'),
     color: colors.white,
   },
   followUpTitle: {
-    fontSize: typography.sizes.xl,
-    fontWeight: typography.weights.bold,
+    ...text('xl', 'bold', 'tight'),
     color: colors.navy,
     textAlign: 'center',
     marginBottom: spacing.sm,
   },
   followUpSubtitle: {
-    fontSize: typography.sizes.base,
+    ...text('base', 'regular', 'relaxed'),
     color: colors.textSecondary,
     textAlign: 'center',
     marginBottom: spacing.xl,
-    lineHeight: 22,
   },
 });

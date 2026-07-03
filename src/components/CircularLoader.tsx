@@ -1,12 +1,13 @@
 import React from 'react';
-import { StyleSheet, View, Text } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
+import { AppText } from '@/components/AppText';
 import {
   getScoreColor,
   getScoreLabel,
   loaderConfig,
-  typography,
   colors,
+  text,
 } from '@/constants/theme';
 
 interface CircularLoaderProps {
@@ -81,14 +82,14 @@ export function CircularLoader({
 
       <View style={styles.center}>
         {showScore && (
-          <Text style={[styles.score, { color: ringColor }]}>
+          <AppText style={[styles.score, { color: ringColor }]}>
             {loading ? '…' : progress}
-          </Text>
+          </AppText>
         )}
         {displayLabel && (
-          <Text style={[styles.label, { maxWidth: ringSize * 0.75 }]}>
+          <AppText style={[styles.label, { maxWidth: ringSize * 0.75 }]}>
             {displayLabel}
-          </Text>
+          </AppText>
         )}
       </View>
     </View>
@@ -106,12 +107,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   score: {
-    fontSize: typography.sizes.hero,
-    fontWeight: typography.weights.bold,
+    ...text('hero', 'bold', 'tight'),
   },
   label: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    ...text('base', 'semibold', 'normal'),
     color: colors.textSecondary,
     marginTop: 8,
     textAlign: 'center',

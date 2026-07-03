@@ -2,11 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import {
   StyleSheet,
   View,
-  Text,
   Animated,
   Easing,
 } from 'react-native';
-import { colors, typography, spacing } from '@/constants/theme';
+import { AppText } from '@/components/AppText';
+import { colors, spacing, text } from '@/constants/theme';
 
 interface AnalyzingLoaderProps {
   /** Status message shown below the dots. */
@@ -77,7 +77,7 @@ export function AnalyzingLoader({ message = 'Analysing' }: AnalyzingLoaderProps)
         <BounceDot delay={140} />
         <BounceDot delay={280} />
       </View>
-      <Text style={styles.message}>{message}</Text>
+      <AppText style={styles.message}>{message}</AppText>
     </View>
   );
 }
@@ -103,8 +103,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.navy,
   },
   message: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
+    ...text('base', 'medium', 'relaxed'),
     color: colors.textSecondary,
     letterSpacing: 0.2,
   },

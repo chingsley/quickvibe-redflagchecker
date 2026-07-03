@@ -3,11 +3,11 @@ import {
   Keyboard,
   Platform,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
-import { colors, spacing, typography } from '@/constants/theme';
+import { AppText } from '@/components/AppText';
+import { colors, spacing, text } from '@/constants/theme';
 
 /** Shared native ID — all AppTextInput fields attach to this toolbar. */
 export const KEYBOARD_DONE_ACCESSORY_ID = 'vibecheck-keyboard-done';
@@ -27,7 +27,7 @@ export function KeyboardDoneAccessory() {
           accessibilityRole="button"
           accessibilityLabel="Done"
         >
-          <Text style={styles.doneText}>Done</Text>
+          <AppText style={styles.doneText}>Done</AppText>
         </TouchableOpacity>
       </View>
     </InputAccessoryView>
@@ -50,8 +50,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.sm,
   },
   doneText: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    ...text('base', 'semibold', 'normal'),
     color: colors.navy,
   },
 });

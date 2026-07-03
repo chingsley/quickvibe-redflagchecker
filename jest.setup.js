@@ -1,6 +1,21 @@
 // Jest setup file for QuickVibe
 // Runs before every test suite.
 
+jest.mock('expo-font', () => ({
+  useFonts: () => [true, null],
+}));
+
+jest.mock('expo-splash-screen', () => ({
+  preventAutoHideAsync: jest.fn().mockResolvedValue(undefined),
+  hideAsync: jest.fn().mockResolvedValue(undefined),
+}));
+
+jest.mock('@expo-google-fonts/roboto', () => ({
+  Roboto_400Regular: 'Roboto_400Regular',
+  Roboto_500Medium: 'Roboto_500Medium',
+  Roboto_700Bold: 'Roboto_700Bold',
+}));
+
 // ── Mock React Native Reanimated ────────────────────────
 // Self-contained mock — doesn't rely on native worklets module.
 

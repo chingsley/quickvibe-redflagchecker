@@ -1,13 +1,13 @@
 import React from 'react';
 import {
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { colors, typography, spacing, radii } from '@/constants/theme';
+import { AppText } from '@/components/AppText';
+import { colors, spacing, radii, text } from '@/constants/theme';
 
 interface AnalysisBreakdownProps {
   label: string;
@@ -29,28 +29,28 @@ export function AnalysisBreakdown({
         contentContainerStyle={styles.content}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.title}>Suggestions</Text>
-        <Text style={styles.subtitle}>{label}</Text>
+        <AppText style={styles.title}>Suggestions</AppText>
+        <AppText style={styles.subtitle}>{label}</AppText>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>What to do</Text>
-          <Text style={styles.bodyText}>{advice}</Text>
+          <AppText style={styles.sectionTitle}>What to do</AppText>
+          <AppText style={styles.bodyText}>{advice}</AppText>
         </View>
 
         {reasons.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Why we flagged this</Text>
+            <AppText style={styles.sectionTitle}>Why we flagged this</AppText>
             {reasons.map((reason, index) => (
               <View key={index} style={styles.reasonRow}>
-                <Text style={styles.reasonBullet}>•</Text>
-                <Text style={styles.bodyText}>{reason}</Text>
+                <AppText style={styles.reasonBullet}>•</AppText>
+                <AppText style={styles.bodyText}>{reason}</AppText>
               </View>
             ))}
           </View>
         )}
 
         <TouchableOpacity style={styles.backButton} onPress={onBack}>
-          <Text style={styles.backButtonText}>Back to result</Text>
+          <AppText style={styles.backButtonText}>Back to result</AppText>
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -67,14 +67,12 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.xl,
   },
   title: {
-    fontSize: typography.sizes.xxl,
-    fontWeight: typography.weights.bold,
+    ...text('xxl', 'bold', 'tight'),
     color: colors.navy,
     marginBottom: spacing.sm,
   },
   subtitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.medium,
+    ...text('lg', 'medium', 'normal'),
     color: colors.textSecondary,
     marginBottom: spacing.xl,
   },
@@ -85,15 +83,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.lg,
   },
   sectionTitle: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
+    ...text('lg', 'semibold', 'normal'),
     color: colors.textPrimary,
     marginBottom: spacing.md,
   },
   bodyText: {
-    fontSize: typography.sizes.base,
+    ...text('base', 'regular', 'relaxed'),
     color: colors.textSecondary,
-    lineHeight: 24,
     flex: 1,
   },
   reasonRow: {
@@ -101,10 +97,9 @@ const styles = StyleSheet.create({
     marginBottom: spacing.sm,
   },
   reasonBullet: {
-    fontSize: typography.sizes.base,
+    ...text('base', 'bold', 'normal'),
     color: colors.red,
     marginRight: spacing.sm,
-    fontWeight: typography.weights.bold,
   },
   backButton: {
     alignSelf: 'center',
@@ -113,8 +108,7 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   backButtonText: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
+    ...text('base', 'medium', 'normal'),
     color: colors.gray500,
     textDecorationLine: 'underline',
   },

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
   Keyboard,
@@ -14,12 +13,13 @@ import Animated, {
 } from 'react-native-reanimated';
 import {
   colors,
-  typography,
   spacing,
   radii,
   animation,
+  text,
 } from '@/constants/theme';
 import { AppTextInput } from '@/components/keyboard';
+import { AppText } from '@/components/AppText';
 import { HeroMicIcon } from './HeroMicIcon';
 import type { FollowUpQuestion } from '@/types';
 
@@ -71,7 +71,7 @@ export function QuestionPrompt({
 
   return (
     <Animated.View style={[styles.card, animatedStyle]}>
-      <Text style={styles.question}>{question.question}</Text>
+      <AppText style={styles.question}>{question.question}</AppText>
 
       {question.type === 'choice' && question.choices ? (
         <View style={styles.choices}>
@@ -82,7 +82,7 @@ export function QuestionPrompt({
               onPress={() => onSubmit(choice)}
               activeOpacity={0.7}
             >
-              <Text style={styles.choiceText}>{choice}</Text>
+              <AppText style={styles.choiceText}>{choice}</AppText>
             </TouchableOpacity>
           ))}
         </View>
@@ -114,7 +114,7 @@ export function QuestionPrompt({
             disabled={!textAnswer.trim()}
             activeOpacity={0.7}
           >
-            <Text style={styles.submitText}>Continue</Text>
+            <AppText style={styles.submitText}>Continue</AppText>
           </TouchableOpacity>
         </View>
       )}
@@ -135,8 +135,7 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   question: {
-    fontSize: typography.sizes.lg,
-    fontWeight: typography.weights.semibold,
+    ...text('lg', 'semibold', 'normal'),
     color: colors.textPrimary,
     textAlign: 'center',
     marginBottom: spacing.lg,
@@ -152,8 +151,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   choiceText: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
+    ...text('base', 'medium', 'normal'),
     color: colors.textPrimary,
   },
   openAnswer: {
@@ -187,8 +185,7 @@ const styles = StyleSheet.create({
     opacity: 0.4,
   },
   submitText: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    ...text('base', 'semibold', 'normal'),
     color: colors.white,
   },
 });

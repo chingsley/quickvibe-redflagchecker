@@ -5,7 +5,7 @@ import {
   TextInput,
   type TextInputProps,
 } from 'react-native';
-import { colors, typography, spacing, radii } from '@/constants/theme';
+import { colors, spacing, radii, text, typography } from '@/constants/theme';
 import { KEYBOARD_DONE_ACCESSORY_ID } from './KeyboardDoneAccessory';
 
 export type AppTextInputProps = TextInputProps & {
@@ -27,6 +27,8 @@ export const AppTextInput = forwardRef<TextInput, AppTextInputProps>(
       submitBehavior,
       style,
       placeholderTextColor = colors.textSecondary,
+      allowFontScaling = true,
+      maxFontSizeMultiplier = typography.maxFontSizeMultiplier,
       ...rest
     },
     ref,
@@ -35,6 +37,8 @@ export const AppTextInput = forwardRef<TextInput, AppTextInputProps>(
       <TextInput
         ref={ref}
         multiline={multiline}
+        allowFontScaling={allowFontScaling}
+        maxFontSizeMultiplier={maxFontSizeMultiplier}
         placeholderTextColor={placeholderTextColor}
         returnKeyType={returnKeyType ?? (multiline ? 'default' : 'done')}
         blurOnSubmit={blurOnSubmit ?? !multiline}
@@ -45,6 +49,7 @@ export const AppTextInput = forwardRef<TextInput, AppTextInputProps>(
           Platform.OS === 'ios' ? KEYBOARD_DONE_ACCESSORY_ID : undefined
         }
         style={[
+          styles.base,
           variant === 'default' && styles.default,
           Platform.OS === 'web' && styles.webOutline,
           style,
@@ -56,6 +61,9 @@ export const AppTextInput = forwardRef<TextInput, AppTextInputProps>(
 );
 
 const styles = StyleSheet.create({
+  base: {
+    ...text('base', 'regular', 'relaxed'),
+  },
   default: {
     width: '100%',
     minHeight: 100,
@@ -63,8 +71,6 @@ const styles = StyleSheet.create({
     borderColor: colors.gray300,
     borderRadius: radii.md,
     padding: spacing.md,
-    fontSize: typography.sizes.base,
-    color: colors.textPrimary,
     textAlignVertical: 'top',
     backgroundColor: colors.white,
   },

@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 // ─── Palette ────────────────────────────────────────────
 
 export const colors = {
@@ -67,24 +69,96 @@ export const loaderRingStops: [number, string][] = [
 ];
 
 // ─── Typography ─────────────────────────────────────────
+// Roboto via @expo-google-fonts/roboto — use fontFamily, not fontWeight,
+// for reliable rendering on iOS and Android.
+
+export const fonts = {
+  regular: 'Roboto_400Regular',
+  medium: 'Roboto_500Medium',
+  bold: 'Roboto_700Bold',
+} as const;
+
+export type FontRole = keyof typeof fonts;
+
+/** Map semantic weights to Roboto font files (Roboto has no 600 face). */
+export function getFontFamily(
+  weight: 'regular' | 'medium' | 'semibold' | 'bold' = 'regular',
+): string {
+  switch (weight) {
+    case 'medium':
+    case 'semibold':
+      return fonts.medium;
+    case 'bold':
+      return fonts.bold;
+    default:
+      return fonts.regular;
+  }
+}
+
+/** Web sizes — compact for desktop layouts. */
+const webTypeSizes = {
+  xs: 12,
+  sm: 14,
+  base: 16,
+  lg: 18,
+  xl: 24,
+  xxl: 32,
+  hero: 48,
+} as const;
+
+/** Native sizes — larger for phone readability at arm's length. */
+const mobileTypeSizes = {
+  xs: 13,
+  sm: 16,
+  base: 18,
+  lg: 20,
+  xl: 28,
+  xxl: 36,
+  hero: 56,
+} as const;
+
+export type TextSize = keyof typeof webTypeSizes;
 
 export const typography = {
-  sizes: {
-    xs: 12,
-    sm: 14,
-    base: 16,
-    lg: 18,
-    xl: 24,
-    xxl: 32,
-    hero: 48,
-  },
+  sizes: Platform.select({
+    web: webTypeSizes,
+    default: mobileTypeSizes,
+  }) ?? mobileTypeSizes,
   weights: {
     regular: '400' as const,
     medium: '500' as const,
     semibold: '600' as const,
     bold: '700' as const,
   },
+  lineHeight: {
+    tight: 1.25,
+    normal: 1.4,
+    relaxed: 1.5,
+  },
+  /** Max scale when user enables larger system text. */
+  maxFontSizeMultiplier: 2,
 } as const;
+
+export function lineHeightFor(
+  fontSize: number,
+  scale: keyof typeof typography.lineHeight = 'normal',
+): number {
+  return Math.round(fontSize * typography.lineHeight[scale]);
+}
+
+/** Build accessible text styles — always sets fontFamily + lineHeight. */
+export function text(
+  size: TextSize,
+  weight: 'regular' | 'medium' | 'semibold' | 'bold' = 'regular',
+  lineScale: keyof typeof typography.lineHeight = 'normal',
+) {
+  const fontSize = typography.sizes[size];
+  return {
+    fontFamily: getFontFamily(weight),
+    fontSize,
+    lineHeight: lineHeightFor(fontSize, lineScale),
+  };
+}
 
 // ─── Spacing (4px base) ─────────────────────────────────
 

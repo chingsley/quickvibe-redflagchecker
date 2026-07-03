@@ -1,18 +1,18 @@
 import React from 'react';
 import {
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CircularLoader } from './CircularLoader';
+import { AppText } from '@/components/AppText';
 import {
   colors,
-  typography,
   spacing,
   radii,
   loaderConfig,
+  text,
 } from '@/constants/theme';
 
 interface ResultCardProps {
@@ -55,7 +55,7 @@ export function ResultCard({
               onPress={onViewSuggestions}
               activeOpacity={0.7}
             >
-              <Text style={styles.suggestionsLinkText}>View suggestions</Text>
+              <AppText style={styles.suggestionsLinkText}>View suggestions</AppText>
             </TouchableOpacity>
           )}
 
@@ -64,7 +64,7 @@ export function ResultCard({
             onPress={onTryAgain}
             activeOpacity={0.7}
           >
-            <Text style={styles.tryAgainText}>Check Another</Text>
+            <AppText style={styles.tryAgainText}>Check Another</AppText>
           </TouchableOpacity>
         </View>
       </View>
@@ -96,8 +96,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   suggestionsLinkText: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.medium,
+    ...text('base', 'medium', 'normal'),
     color: colors.navy,
     textDecorationLine: 'underline',
   },
@@ -110,8 +109,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   tryAgainText: {
-    fontSize: typography.sizes.base,
-    fontWeight: typography.weights.semibold,
+    ...text('base', 'semibold', 'normal'),
     color: colors.white,
   },
 });
