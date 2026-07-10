@@ -13,7 +13,8 @@ import {
 import { useRouter } from 'expo-router';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
-import { ToggleSwitch } from '@/components/ToggleSwitch';
+import { MoreMenuIcon } from '@/components/navigation/MoreMenuIcon';
+import { SettingsBottomSheet } from '@/components/navigation/SettingsBottomSheet';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/api/client';
 import type { Friend } from '@/api/types';
@@ -58,7 +59,7 @@ export function AppDrawer({
   onShowFollowUpsInChatChange,
 }: AppDrawerProps) {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { width: screenWidth } = useWindowDimensions();
   const { top: safeTop, bottom: safeBottom } = useSafeAreaInsets();
   const shiftAmount = screenWidth * DRAWER_REVEAL_RATIO;
@@ -66,6 +67,8 @@ export function AppDrawer({
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [signingOut, setSigningOut] = useState(false);
 
   const shiftAnim = useRef(new Animated.Value(0)).current;
   const overlayAnim = useRef(new Animated.Value(0)).current;
@@ -132,15 +135,36 @@ export function AppDrawer({
   );
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible) {
+      setSettingsOpen(false);
+      return;
+    }
 
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (settingsOpen) {
+        setSettingsOpen(false);
+        return true;
+      }
       closeWithAnimation();
       return true;
     });
 
     return () => subscription.remove();
-  }, [visible, closeWithAnimation]);
+  }, [visible, settingsOpen, closeWithAnimation]);
+
+  const openSettings = () => {
+    setSettingsOpen(true);
+  };
+
+  const handleSignOut = async () => {
+    setSigningOut(true);
+    try {
+      setSettingsOpen(false);
+      await logout();
+    } finally {
+      setSigningOut(false);
+    }
+  };
 
   const selectFriend = (id: string) => {
     if (id === currentFriendId) {
@@ -221,32 +245,32 @@ export function AppDrawer({
               )}
             </View>
 
-            {onShowFollowUpsInChatChange && (
-              <View style={styles.toggleRow}>
-                <View style={styles.toggleCopy}>
-                  <AppText style={styles.toggleLabel}>Show follow-up Q&A in chat</AppText>
-                  <AppText style={styles.toggleHint}>
-                    Answers still count toward the verdict when hidden
-                  </AppText>
-                </View>
-                <ToggleSwitch
-                  value={showFollowUpsInChat}
-                  onValueChange={onShowFollowUpsInChatChange}
-                  accessibilityLabel="Show follow-up Q&A in chat"
-                />
-              </View>
-            )}
-
-            <View style={styles.actions}>
-              {user?.email && (
+            {user?.email ? (
+              <Pressable
+                style={({ pressed }) => [styles.accountFooter, pressed && styles.accountFooterPressed]}
+                onPress={openSettings}
+                accessibilityRole="button"
+                accessibilityLabel="Open settings"
+              >
                 <AppText style={styles.email} numberOfLines={1}>
                   {user.email}
                 </AppText>
-              )}
-            </View>
+                <MoreMenuIcon />
+              </Pressable>
+            ) : null}
           </View>
         </SafeAreaView>
       </View>
+
+      <SettingsBottomSheet
+        visible={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        userEmail={user?.email}
+        showFollowUpsInChat={onShowFollowUpsInChatChange ? showFollowUpsInChat : undefined}
+        onShowFollowUpsInChatChange={onShowFollowUpsInChatChange}
+        onSignOut={handleSignOut}
+        signingOut={signingOut}
+      />
 
       <Animated.View
         style={[
@@ -331,6 +355,19 @@ const styles = StyleSheet.create({
   email: {
     ...text('sm', 'regular', 'normal'),
     color: colors.textSecondary,
+    flex: 1,
+  },
+  accountFooter: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'stretch',
+    gap: spacing.sm,
+    paddingVertical: spacing.md,
+    minHeight: 48,
+    borderRadius: radii.md,
+  },
+  accountFooterPressed: {
+    opacity: 0.7,
   },
   friendsGroup: {
     flex: 1,
@@ -404,32 +441,6 @@ const styles = StyleSheet.create({
     ...text('sm', 'regular', 'normal'),
     color: colors.gray300,
     marginHorizontal: spacing.xs,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: spacing.md,
-    paddingVertical: spacing.md,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: colors.gray300,
-  },
-  toggleCopy: {
-    flex: 1,
-  },
-  toggleLabel: {
-    ...text('sm', 'medium', 'normal'),
-    color: colors.textPrimary,
-  },
-  toggleHint: {
-    ...text('xs', 'regular', 'normal'),
-    color: colors.textSecondary,
-    marginTop: spacing.xs,
-  },
-  actions: {
-    paddingTop: spacing.sm,
-    gap: spacing.sm,
-    paddingBottom: spacing.sm,
   },
   actionButton: {
     alignSelf: 'flex-start',

@@ -12,6 +12,9 @@ import { CHAT_CONTENT_MAX_WIDTH } from './chatLayout';
 import { colors, radii, spacing, text, typography, primaryButton, primaryButtonText } from '@/constants/theme';
 
 const KEYBOARD_GAP = 4;
+const SEND_BUTTON_SIZE = 36;
+/** Space reserved on the right so text does not run under the send button. */
+const INPUT_SEND_INSET = SEND_BUTTON_SIZE + spacing.sm;
 
 interface ChatInputBarProps {
   value: string;
@@ -106,6 +109,7 @@ export function ChatInputBar({
               editable={!disabled}
               allowFontScaling
               maxFontSizeMultiplier={typography.maxFontSizeMultiplier}
+              scrollEnabled
             />
             <TouchableOpacity
               style={[styles.sendButton, !canSubmit && styles.sendDisabled]}
@@ -144,14 +148,12 @@ const styles = StyleSheet.create({
   },
   newExperienceText: primaryButtonText,
   container: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    position: 'relative',
     borderWidth: 1,
     borderColor: colors.gray300,
     borderRadius: radii.xl,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.xs,
-    paddingVertical: spacing.xs,
+    paddingTop: spacing.sm,
+    paddingBottom: spacing.sm,
     backgroundColor: colors.white,
     minHeight: 52,
     shadowColor: colors.black,
@@ -165,17 +167,31 @@ const styles = StyleSheet.create({
     ...text('base', 'regular', 'relaxed'),
     color: colors.textPrimary,
     maxHeight: 120,
-    paddingTop: Platform.OS === 'ios' ? spacing.sm : spacing.xs,
-    paddingBottom: spacing.sm,
+    minHeight: 36,
+    // RTL moves the scroll indicator to the left edge of the field.
+    direction: 'rtl',
+    textAlign: 'left',
+    paddingEnd: spacing.md,
+    paddingStart: INPUT_SEND_INSET,
+    paddingTop: Platform.OS === 'ios' ? spacing.xs : 0,
+    paddingBottom: Platform.OS === 'ios' ? spacing.xs : 0,
+    ...(Platform.OS === 'web'
+      ? ({
+          overflow: 'auto',
+          scrollbarGutter: 'stable',
+        } as object)
+      : null),
   },
   sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    position: 'absolute',
+    right: spacing.sm,
+    bottom: spacing.sm,
+    width: SEND_BUTTON_SIZE,
+    height: SEND_BUTTON_SIZE,
+    borderRadius: SEND_BUTTON_SIZE / 2,
     backgroundColor: colors.navy,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 2,
   },
   sendDisabled: {
     opacity: 0.35,
