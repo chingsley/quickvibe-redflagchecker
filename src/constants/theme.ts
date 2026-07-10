@@ -179,7 +179,7 @@ export const gestalt = {
   /** Vertical gap between adjacent groups (e.g. one section to the next). */
   groupGap: spacing.xxl,
   /** Vertical gap between items inside a group, including the group header. */
-  itemGap: spacing.md,
+  itemGap: spacing.xs,
 } as const;
 
 // ─── Radii ──────────────────────────────────────────────
@@ -191,6 +191,24 @@ export const radii = {
   xl: 24,
   full: 9999,
 } as const;
+
+// ─── Primary Button ─────────────────────────────────────
+
+/** Shared navy CTA (e.g. "New Vibe", "+ Vibe New Friend"). */
+export const primaryButton = {
+  minHeight: 52,
+  borderRadius: radii.xl,
+  backgroundColor: colors.navy,
+  alignItems: 'center' as const,
+  justifyContent: 'center' as const,
+  paddingHorizontal: spacing.lg,
+  paddingVertical: spacing.md,
+};
+
+export const primaryButtonText = {
+  ...text('base', 'semibold', 'normal'),
+  color: colors.white,
+};
 
 // ─── Animation ──────────────────────────────────────────
 

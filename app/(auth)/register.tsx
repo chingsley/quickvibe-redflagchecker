@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
 import { AppTextInput } from '@/components/keyboard';
 import { useAuth } from '@/context/AuthContext';
-import { colors, spacing, text } from '@/constants/theme';
+import { colors, spacing, text, primaryButton, primaryButtonText } from '@/constants/theme';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -135,19 +135,13 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   button: {
-    backgroundColor: colors.navy,
-    borderRadius: 9999,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
+    ...primaryButton,
     marginTop: spacing.sm,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
-  buttonText: {
-    ...text('base', 'semibold', 'normal'),
-    color: colors.white,
-  },
+  buttonText: primaryButtonText,
   linkButton: {
     marginTop: spacing.lg,
     alignItems: 'center',

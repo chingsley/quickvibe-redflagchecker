@@ -9,7 +9,7 @@ import {
 } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { CHAT_CONTENT_MAX_WIDTH } from './chatLayout';
-import { colors, radii, spacing, text, typography } from '@/constants/theme';
+import { colors, radii, spacing, text, typography, primaryButton, primaryButtonText } from '@/constants/theme';
 
 const KEYBOARD_GAP = 4;
 
@@ -137,21 +137,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.lg,
   },
   newExperienceButton: {
-    minHeight: 52,
-    borderRadius: radii.xl,
-    backgroundColor: colors.navy,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    ...primaryButton,
   },
   newExperienceDisabled: {
     opacity: 0.45,
   },
-  newExperienceText: {
-    ...text('base', 'semibold', 'normal'),
-    color: colors.white,
-  },
+  newExperienceText: primaryButtonText,
   container: {
     flexDirection: 'row',
     alignItems: 'flex-end',

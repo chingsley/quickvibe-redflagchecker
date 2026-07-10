@@ -3,19 +3,21 @@ import {
   Keyboard,
   StyleSheet,
   TouchableOpacity,
-  View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppText } from '@/components/AppText';
 import { AppTextInput, KeyboardAwareScreen } from '@/components/keyboard';
+import { AppDrawer, ScreenHeader } from '@/components/navigation';
 import { RelationshipPicker } from '@/components/onboard/RelationshipPicker';
 import { api } from '@/api/client';
 import type { RelationshipType } from '@/api/types';
 import { setLastFriendId } from '@/lib/lastFriend';
-import { colors, spacing, text } from '@/constants/theme';
+import { colors, spacing, text, primaryButton, primaryButtonText } from '@/constants/theme';
 
 export default function OnboardScreen() {
   const router = useRouter();
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const [displayName, setDisplayName] = useState('');
   const [relationshipType, setRelationshipType] = useState<RelationshipType | null>(null);
   const [relationshipOther, setRelationshipOther] = useState('');
@@ -50,69 +52,69 @@ export default function OnboardScreen() {
   };
 
   return (
-    <KeyboardAwareScreen contentContainerStyle={styles.scrollContent}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.back}>
-          <AppText style={styles.backText}>← Back</AppText>
-        </TouchableOpacity>
-
-        <AppText style={styles.title}>New friend</AppText>
-        <AppText style={styles.subtitle}>
-          Add a name or alias — it doesn&apos;t have to be their real name.
-        </AppText>
-
-        <AppText style={styles.label}>Friend&apos;s name</AppText>
-        <AppTextInput
-          variant="default"
-          placeholder="e.g. Alex, Coworker Sam…"
-          value={displayName}
-          onChangeText={setDisplayName}
-          style={styles.nameInput}
+    <AppDrawer visible={drawerOpen} onClose={() => setDrawerOpen(false)}>
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <ScreenHeader
+          onMenuPress={() => setDrawerOpen(true)}
+          title="New friend"
+          showBorder
         />
 
-        <RelationshipPicker
-          value={relationshipType}
-          otherText={relationshipOther}
-          onChange={setRelationshipType}
-          onOtherTextChange={setRelationshipOther}
-        />
-
-        {error && <AppText style={styles.error}>{error}</AppText>}
-
-        <TouchableOpacity
-          style={[styles.startButton, (!canStart || submitting) && styles.startDisabled]}
-          onPress={handleStart}
-          disabled={!canStart || submitting}
+        <KeyboardAwareScreen
+          edges={['bottom']}
+          contentContainerStyle={styles.scrollContent}
         >
-          <AppText style={styles.startText}>
-            {submitting ? 'Starting…' : 'Start'}
+          <AppText style={styles.subtitle}>
+            Add a name or alias — it doesn&apos;t have to be their real name.
           </AppText>
-        </TouchableOpacity>
-    </KeyboardAwareScreen>
+
+          <AppText style={styles.label}>Friend&apos;s name</AppText>
+          <AppTextInput
+            variant="default"
+            placeholder="e.g. Alex, Coworker Sam…"
+            value={displayName}
+            onChangeText={setDisplayName}
+            style={styles.nameInput}
+          />
+
+          <RelationshipPicker
+            value={relationshipType}
+            otherText={relationshipOther}
+            onChange={setRelationshipType}
+            onOtherTextChange={setRelationshipOther}
+          />
+
+          {error && <AppText style={styles.error}>{error}</AppText>}
+
+          <TouchableOpacity
+            style={[styles.startButton, (!canStart || submitting) && styles.startDisabled]}
+            onPress={handleStart}
+            disabled={!canStart || submitting}
+          >
+            <AppText style={styles.startText}>
+              {submitting ? 'Starting…' : 'Start'}
+            </AppText>
+          </TouchableOpacity>
+        </KeyboardAwareScreen>
+      </SafeAreaView>
+    </AppDrawer>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
   scrollContent: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xxl,
-  },
-  back: {
-    marginBottom: spacing.lg,
-    alignSelf: 'flex-start',
-  },
-  backText: {
-    ...text('base', 'medium', 'normal'),
-    color: colors.gray500,
-  },
-  title: {
-    ...text('xxl', 'bold', 'tight'),
-    color: colors.navy,
-    marginBottom: spacing.sm,
   },
   subtitle: {
     ...text('base', 'regular', 'relaxed'),
     color: colors.textSecondary,
     marginBottom: spacing.xl,
+    marginTop: spacing.md,
   },
   label: {
     ...text('base', 'semibold', 'normal'),
@@ -128,17 +130,11 @@ const styles = StyleSheet.create({
     marginTop: spacing.md,
   },
   startButton: {
-    backgroundColor: colors.navy,
-    borderRadius: 9999,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
+    ...primaryButton,
     marginTop: spacing.xl,
   },
   startDisabled: {
     opacity: 0.4,
   },
-  startText: {
-    ...text('base', 'semibold', 'normal'),
-    color: colors.white,
-  },
+  startText: primaryButtonText,
 });

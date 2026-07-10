@@ -16,11 +16,11 @@ import { DeleteExperienceDialog } from '@/components/chat/DeleteExperienceDialog
 import { AbandonAnalysisDialog } from '@/components/chat/AbandonAnalysisDialog';
 import { ChatMessageList } from '@/components/chat/ChatMessageList';
 import { PendingClarificationBar } from '@/components/chat/PendingClarificationBar';
-import { AppDrawer, HamburgerButton } from '@/components/navigation';
+import { AppDrawer, ScreenHeader } from '@/components/navigation';
 import { useChatSession } from '@/hooks/useChatSession';
 import { api } from '@/api/client';
 import type { Friend } from '@/api/types';
-import { colors, lineHeightFor, spacing, text } from '@/constants/theme';
+import { colors, spacing, text } from '@/constants/theme';
 import {
   getShowFollowUpsInChat,
   setShowFollowUpsInChat as persistShowFollowUpsInChat,
@@ -278,51 +278,43 @@ export default function ChatScreen() {
 
   if (loadError) {
     return (
-      <SafeAreaView style={styles.screen} edges={['top']}>
-        <View style={styles.header}>
-          <View style={styles.headerSide}>
-            <HamburgerButton onPress={() => setDrawerOpen(true)} />
-          </View>
-          <AppText style={styles.headerTitle} numberOfLines={1}>
-            Chat
-          </AppText>
-          <View style={styles.headerSide} />
-        </View>
-        <View style={styles.center}>
-          <AppText style={styles.error}>{loadError}</AppText>
-        </View>
-        <AppDrawer
-          visible={drawerOpen}
-          onClose={() => setDrawerOpen(false)}
-          currentFriendId={friendId}
-          showFollowUpsInChat={showFollowUpsInChat}
-          onShowFollowUpsInChatChange={handleShowFollowUpsChange}
-        />
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.screen} edges={['top']}>
-      <View style={styles.header}>
-        <View style={styles.headerSide}>
-          <HamburgerButton onPress={() => setDrawerOpen(true)} />
-        </View>
-        <AppText style={styles.headerTitle} numberOfLines={1}>
-          {friend?.displayName ?? 'Chat'}
-        </AppText>
-        <View style={styles.headerSide} />
-      </View>
-
       <AppDrawer
         visible={drawerOpen}
         onClose={() => setDrawerOpen(false)}
         currentFriendId={friendId}
         showFollowUpsInChat={showFollowUpsInChat}
         onShowFollowUpsInChatChange={handleShowFollowUpsChange}
-      />
+      >
+        <SafeAreaView style={styles.screen} edges={['top']}>
+          <ScreenHeader
+            onMenuPress={() => setDrawerOpen(true)}
+            title="Chat"
+            showBorder
+          />
+          <View style={styles.center}>
+            <AppText style={styles.error}>{loadError}</AppText>
+          </View>
+        </SafeAreaView>
+      </AppDrawer>
+    );
+  }
 
-      <KeyboardAvoidingView
+  return (
+    <AppDrawer
+      visible={drawerOpen}
+      onClose={() => setDrawerOpen(false)}
+      currentFriendId={friendId}
+      showFollowUpsInChat={showFollowUpsInChat}
+      onShowFollowUpsInChatChange={handleShowFollowUpsChange}
+    >
+      <SafeAreaView style={styles.screen} edges={['top']}>
+        <ScreenHeader
+          onMenuPress={() => setDrawerOpen(true)}
+          title={friend?.displayName ?? 'Chat'}
+          showBorder
+        />
+
+        <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 4 : 0}
@@ -422,7 +414,8 @@ export default function ChatScreen() {
           error={deleteError}
         />
       </KeyboardAvoidingView>
-    </SafeAreaView>
+      </SafeAreaView>
+    </AppDrawer>
   );
 }
 
@@ -433,28 +426,6 @@ const styles = StyleSheet.create({
   },
   flex: {
     flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: colors.gray300,
-  },
-  headerTitle: {
-    ...text('lg', 'semibold', 'tight'),
-    fontSize: 18,
-    lineHeight: lineHeightFor(18, 'tight'),
-    color: colors.navy,
-    flex: 1,
-    textAlign: 'center',
-  },
-  headerSide: {
-    width: 44,
-    minWidth: 44,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   messagesContent: {
     paddingBottom: spacing.lg,

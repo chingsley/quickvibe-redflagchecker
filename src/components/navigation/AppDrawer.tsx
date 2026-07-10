@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Animated,
-  Modal,
+  BackHandler,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -17,9 +17,16 @@ import { ToggleSwitch } from '@/components/ToggleSwitch';
 import { useAuth } from '@/context/AuthContext';
 import { api } from '@/api/client';
 import type { Friend } from '@/api/types';
-import { colors, radii, spacing, text, gestalt, SCORE_BANDS } from '@/constants/theme';
+import { colors, radii, spacing, text, gestalt, SCORE_BANDS, primaryButton, primaryButtonText } from '@/constants/theme';
 
-const DRAWER_WIDTH = 300;
+/** How much of the screen width the main view shifts right when the drawer opens. */
+const DRAWER_REVEAL_RATIO = 0.78;
+
+/** Max width for all sidebar menu content (brand, actions, friends, settings, footer). */
+const DRAWER_MENU_MAX_WIDTH = 280;
+
+/** Friend row background bleeds this far past the content column; list negative margin keeps the dot aligned. */
+const FRIEND_ROW_INSET = spacing.sml;
 
 function formatRelationship(type: string): string {
   return type.replace(/_/g, ' ');
@@ -36,6 +43,7 @@ function getVibeDotColor(score: number | null): string {
 interface AppDrawerProps {
   visible: boolean;
   onClose: () => void;
+  children: ReactNode;
   currentFriendId?: string;
   showFollowUpsInChat?: boolean;
   onShowFollowUpsInChatChange?: (value: boolean) => void;
@@ -44,22 +52,24 @@ interface AppDrawerProps {
 export function AppDrawer({
   visible,
   onClose,
+  children,
   currentFriendId,
   showFollowUpsInChat = false,
   onShowFollowUpsInChatChange,
 }: AppDrawerProps) {
   const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { width: screenWidth } = useWindowDimensions();
   const { top: safeTop, bottom: safeBottom } = useSafeAreaInsets();
-  const panelWidth = Math.min(DRAWER_WIDTH, screenWidth * 0.85);
+  const shiftAmount = screenWidth * DRAWER_REVEAL_RATIO;
 
   const [friends, setFriends] = useState<Friend[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const slideAnim = useRef(new Animated.Value(-panelWidth)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const shiftAnim = useRef(new Animated.Value(0)).current;
+  const overlayAnim = useRef(new Animated.Value(0)).current;
+  const isAnimatingClosed = useRef(false);
 
   const loadFriends = useCallback(async () => {
     setLoading(true);
@@ -74,47 +84,63 @@ export function AppDrawer({
     }
   }, []);
 
+  const animateDrawer = useCallback(
+    (open: boolean, onComplete?: () => void) => {
+      Animated.parallel([
+        Animated.timing(shiftAnim, {
+          toValue: open ? shiftAmount : 0,
+          duration: open ? 250 : 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(overlayAnim, {
+          toValue: open ? 1 : 0,
+          duration: open ? 250 : 200,
+          useNativeDriver: true,
+        }),
+      ]).start(() => onComplete?.());
+    },
+    [overlayAnim, shiftAmount, shiftAnim],
+  );
+
   useEffect(() => {
     if (visible) {
       loadFriends();
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 250,
-          useNativeDriver: true,
-        }),
-      ]).start();
-    } else {
-      slideAnim.setValue(-panelWidth);
-      fadeAnim.setValue(0);
+      animateDrawer(true);
+      return;
     }
-  }, [visible, loadFriends, slideAnim, fadeAnim, panelWidth]);
+
+    if (!isAnimatingClosed.current) {
+      animateDrawer(false);
+    }
+  }, [visible, loadFriends, animateDrawer]);
 
   const closeWithAnimation = useCallback(
     (afterClose?: () => void) => {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: -panelWidth,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
+      if (!visible) {
+        afterClose?.();
+        return;
+      }
+
+      isAnimatingClosed.current = true;
+      animateDrawer(false, () => {
+        isAnimatingClosed.current = false;
         onClose();
         afterClose?.();
       });
     },
-    [slideAnim, fadeAnim, panelWidth, onClose],
+    [animateDrawer, onClose, visible],
   );
+
+  useEffect(() => {
+    if (!visible) return;
+
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      closeWithAnimation();
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [visible, closeWithAnimation]);
 
   const selectFriend = (id: string) => {
     if (id === currentFriendId) {
@@ -128,36 +154,19 @@ export function AppDrawer({
     closeWithAnimation(() => router.push('/onboard'));
   };
 
-  const goHome = () => {
-    closeWithAnimation(() => router.replace('/'));
-  };
-
-  const handleLogout = () => {
-    closeWithAnimation(() => logout());
-  };
-
   return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="none"
-      onRequestClose={() => closeWithAnimation()}
-    >
-      <View style={styles.root}>
-        <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={() => closeWithAnimation()} />
-        </Animated.View>
-
-        <Animated.View
-          style={[
-            styles.panel,
-            { width: panelWidth, transform: [{ translateX: slideAnim }] },
-          ]}
+    <View style={styles.shell}>
+      <View
+        style={styles.drawerLayer}
+        pointerEvents={visible ? 'auto' : 'none'}
+        accessibilityElementsHidden={!visible}
+        importantForAccessibility={visible ? 'auto' : 'no-hide-descendants'}
+      >
+        <SafeAreaView
+          style={[styles.panelInner, { paddingTop: safeTop, paddingBottom: safeBottom }]}
+          edges={[]}
         >
-          <SafeAreaView
-            style={[styles.panelInner, { paddingTop: safeTop, paddingBottom: safeBottom }]}
-            edges={[]}
-          >
+          <View style={styles.menuColumn}>
             <View style={styles.brandGroup}>
               <AppText style={styles.brand}>VibeMeter</AppText>
             </View>
@@ -178,6 +187,7 @@ export function AppDrawer({
               ) : (
                 <ScrollView
                   style={styles.friendList}
+                  contentContainerStyle={styles.friendListContent}
                   showsVerticalScrollIndicator={false}
                   keyboardShouldPersistTaps="handled"
                 >
@@ -187,7 +197,7 @@ export function AppDrawer({
                     return (
                       <TouchableOpacity
                         key={friend.id}
-                        style={[styles.friendRow, active && styles.friendRowActive]}
+                        style={[styles.friendItemContainer, active && styles.friendRowActive]}
                         onPress={() => selectFriend(friend.id)}
                         activeOpacity={0.7}
                       >
@@ -234,35 +244,80 @@ export function AppDrawer({
                 </AppText>
               )}
             </View>
-          </SafeAreaView>
-        </Animated.View>
+          </View>
+        </SafeAreaView>
       </View>
-    </Modal>
+
+      <Animated.View
+        style={[
+          styles.contentLayer,
+          visible && styles.contentLayerOpen,
+          { transform: [{ translateX: shiftAnim }] },
+        ]}
+      >
+        <View style={[styles.contentSurface, visible && styles.contentSurfaceOpen]}>
+          {children}
+
+          <Animated.View
+            pointerEvents={visible ? 'auto' : 'none'}
+            style={[styles.contentOverlay, { opacity: overlayAnim }]}
+          >
+            <Pressable
+              style={StyleSheet.absoluteFill}
+              onPress={() => closeWithAnimation()}
+              accessibilityRole="button"
+              accessibilityLabel="Close menu"
+            />
+          </Animated.View>
+        </View>
+      </Animated.View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
+  shell: {
     flex: 1,
-    flexDirection: 'row',
+    backgroundColor: colors.gray50,
   },
-  backdrop: {
+  drawerLayer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
+    backgroundColor: colors.gray50,
+    zIndex: 0,
   },
-  panel: {
-    height: '100%',
-    backgroundColor: colors.white,
+  contentLayer: {
+    flex: 1,
+    zIndex: 1,
+  },
+  contentLayerOpen: {
     shadowColor: colors.black,
-    shadowOffset: { width: 2, height: 0 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: -6, height: 0 },
+    shadowOpacity: 0.18,
+    shadowRadius: 16,
+    elevation: 12,
+  },
+  contentSurface: {
+    flex: 1,
+    backgroundColor: colors.white,
+  },
+  contentSurfaceOpen: {
+    borderTopLeftRadius: radii.xl,
+    borderBottomLeftRadius: radii.xl,
+    overflow: 'hidden',
+  },
+  contentOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255, 255, 255, 0.55)',
   },
   panelInner: {
     flex: 1,
     paddingHorizontal: spacing.lg,
     paddingTop: spacing.lg,
+  },
+  menuColumn: {
+    flex: 1,
+    width: '100%',
+    maxWidth: DRAWER_MENU_MAX_WIDTH,
   },
   brandGroup: {
     gap: gestalt.itemGap,
@@ -303,23 +358,29 @@ const styles = StyleSheet.create({
   friendList: {
     flex: 1,
     marginBottom: spacing.md,
+    marginHorizontal: -FRIEND_ROW_INSET,
   },
-  friendRow: {
+  friendListContent: {
+    gap: gestalt.itemGap,
+  },
+  friendItemContainer: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingVertical: spacing.xs,
-    paddingHorizontal: 0,
-    marginBottom: spacing.md,
+    alignItems: 'center',
+    paddingVertical: spacing.sml,
+    paddingHorizontal: FRIEND_ROW_INSET,
+    borderRadius: radii.xl,
+    // borderWidth: StyleSheet.hairlineWidth,
+    // borderColor: colors.gray300,
   },
   friendRowActive: {
     // active state indicated by name color only
+    backgroundColor: colors.gray300,
   },
   vibeDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
     marginRight: spacing.sm,
-    marginTop: 6,
   },
   friendContent: {
     flex: 1,
@@ -371,26 +432,9 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.sm,
   },
   actionButton: {
-    backgroundColor: colors.navy,
-    borderRadius: radii.md,
-    paddingVertical: spacing.md,
-    alignItems: 'center',
+    alignSelf: 'flex-start',
+    ...primaryButton,
     marginBottom: gestalt.groupGap,
   },
-  actionButtonText: {
-    ...text('base', 'semibold', 'normal'),
-    color: colors.white,
-  },
-  actionLink: {
-    paddingVertical: spacing.sm,
-    alignItems: 'center',
-  },
-  actionLinkText: {
-    ...text('base', 'medium', 'normal'),
-    color: colors.navy,
-  },
-  logoutText: {
-    ...text('base', 'medium', 'normal'),
-    color: colors.gray500,
-  },
+  actionButtonText: primaryButtonText,
 });
