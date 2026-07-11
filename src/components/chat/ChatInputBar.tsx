@@ -1,20 +1,41 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Keyboard,
   Platform,
   StyleSheet,
   TextInput,
+  type TextInputContentSizeChangeEventData,
   TouchableOpacity,
   View,
+  type NativeSyntheticEvent,
 } from 'react-native';
 import { AppText } from '@/components/AppText';
 import { CHAT_CONTENT_MAX_WIDTH } from './chatLayout';
-import { colors, radii, spacing, text, typography, primaryButton, primaryButtonText } from '@/constants/theme';
+import {
+  colors,
+  getFontFamily,
+  lineHeightFor,
+  radii,
+  spacing,
+  text,
+  typography,
+  primaryButton,
+  primaryButtonText,
+} from '@/constants/theme';
 
 const KEYBOARD_GAP = 4;
 const SEND_BUTTON_SIZE = 36;
 /** Space reserved on the right so text does not run under the send button. */
 const INPUT_SEND_INSET = SEND_BUTTON_SIZE + spacing.sm;
+
+const INPUT_LINE_HEIGHT = lineHeightFor(typography.sizes.base, 'relaxed');
+const INPUT_PADDING_TOP = spacing.xs;
+const INPUT_PADDING_BOTTOM = spacing.xs;
+const MIN_INPUT_HEIGHT = Math.max(
+  36,
+  INPUT_LINE_HEIGHT + INPUT_PADDING_TOP + INPUT_PADDING_BOTTOM,
+);
+const MAX_INPUT_HEIGHT = 120;
 
 interface ChatInputBarProps {
   value: string;
@@ -47,7 +68,45 @@ export function ChatInputBar({
   submitAccessibilityLabel = 'Send message',
 }: ChatInputBarProps) {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [contentHeight, setContentHeight] = useState(0);
   const inputRef = useRef<TextInput>(null);
+  /** RN 0.79+ only re-triggers onContentSizeChange after the first typed character. */
+  const contentSizePrimedRef = useRef(false);
+
+  const isAtMaxHeight = contentHeight >= MAX_INPUT_HEIGHT;
+
+  const handleContentSizeChange = useCallback(
+    (event: NativeSyntheticEvent<TextInputContentSizeChangeEventData>) => {
+      setContentHeight(event.nativeEvent.contentSize.height);
+    },
+    [],
+  );
+
+  const handleChangeText = useCallback(
+    (text: string) => {
+      onChangeText(text);
+
+      if (
+        Platform.OS !== 'web' &&
+        !contentSizePrimedRef.current &&
+        text.trim().length > 0
+      ) {
+        contentSizePrimedRef.current = true;
+        inputRef.current?.setNativeProps({ text });
+      }
+    },
+    [onChangeText],
+  );
+
+  useEffect(() => {
+    if (!collapsed) {
+      contentSizePrimedRef.current = false;
+      setContentHeight(0);
+      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [collapsed]);
 
   useEffect(() => {
     const showEvent = Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow';
@@ -66,15 +125,19 @@ export function ChatInputBar({
     };
   }, []);
 
-  useEffect(() => {
-    if (!collapsed) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 50);
-      return () => clearTimeout(timer);
-    }
-    return undefined;
-  }, [collapsed]);
-
   const canSubmit = value.trim().length > 0 && !disabled && !submitDisabled;
+
+  /**
+   * iOS (RN 0.79+): never set height/minHeight on the TextInput while growing —
+   * that stops onContentSizeChange and freezes the box at one line. Lock the
+   * container height only once content reaches the max, then enable scrolling.
+   */
+  const inputGrowthStyle =
+    Platform.OS === 'web'
+      ? isAtMaxHeight
+        ? { height: MAX_INPUT_HEIGHT }
+        : { minHeight: MIN_INPUT_HEIGHT, maxHeight: MAX_INPUT_HEIGHT }
+      : null;
 
   const keyboardPadding =
     Platform.OS === 'web' && keyboardHeight > 0
@@ -95,21 +158,32 @@ export function ChatInputBar({
             <AppText style={styles.newExperienceText}>{collapsedLabel}</AppText>
           </TouchableOpacity>
         ) : (
-          <View style={styles.container}>
+          <View
+            style={[
+              styles.container,
+              isAtMaxHeight && styles.containerAtMaxHeight,
+            ]}
+          >
             <TextInput
               ref={inputRef}
-              style={styles.input}
+              style={[
+                styles.input,
+                inputGrowthStyle,
+                Platform.OS === 'web' && isAtMaxHeight && styles.inputScrollableWeb,
+              ]}
               value={value}
-              onChangeText={onChangeText}
+              onChangeText={handleChangeText}
+              onContentSizeChange={handleContentSizeChange}
               onBlur={() => onCollapse?.()}
               placeholder={placeholder}
               placeholderTextColor={colors.textSecondary}
               multiline
+              scrollEnabled={isAtMaxHeight}
               maxLength={4000}
               editable={!disabled}
               allowFontScaling
               maxFontSizeMultiplier={typography.maxFontSizeMultiplier}
-              scrollEnabled
+              textAlignVertical="top"
             />
             <TouchableOpacity
               style={[styles.sendButton, !canSubmit && styles.sendDisabled]}
@@ -162,25 +236,30 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  containerAtMaxHeight: {
+    height: MAX_INPUT_HEIGHT + spacing.sm * 2,
+  },
   input: {
-    flex: 1,
-    ...text('base', 'regular', 'relaxed'),
+    width: '100%',
+    fontFamily: getFontFamily('regular'),
+    fontSize: typography.sizes.base,
     color: colors.textPrimary,
-    maxHeight: 120,
-    minHeight: 36,
-    // RTL moves the scroll indicator to the left edge of the field.
-    direction: 'rtl',
-    textAlign: 'left',
-    paddingEnd: spacing.md,
-    paddingStart: INPUT_SEND_INSET,
-    paddingTop: Platform.OS === 'ios' ? spacing.xs : 0,
-    paddingBottom: Platform.OS === 'ios' ? spacing.xs : 0,
+    paddingLeft: spacing.md,
+    paddingRight: INPUT_SEND_INSET,
+    paddingTop: INPUT_PADDING_TOP,
+    paddingBottom: INPUT_PADDING_BOTTOM,
+    textAlignVertical: 'top',
     ...(Platform.OS === 'web'
       ? ({
-          overflow: 'auto',
-          scrollbarGutter: 'stable',
-        } as object)
+          lineHeight: INPUT_LINE_HEIGHT,
+          direction: 'rtl',
+          textAlign: 'left',
+          resize: 'none',
+        } as const)
       : null),
+  },
+  inputScrollableWeb: {
+    overflow: 'scroll',
   },
   sendButton: {
     position: 'absolute',
